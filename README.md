@@ -12,9 +12,7 @@ pipeline writes analysis-ready Parquet files and an audit report to
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
-
 .venv/bin/python -m src.syn_wallet.clean_data --input-dir data/raw --output-dir data/processed
->>>>>>> Stashed changes
 ```
 
 The pipeline removes only exact duplicate canonical records, standardises the
