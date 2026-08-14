@@ -1,0 +1,21 @@
+entity_id,entity_name,fy_label,reporting_currency,fiscal_year_end,fye_basis
+E01,BHP Group,FY2025,USD,2025-06-30,cited in AFS note text or source_doc title
+E02,Glencore,FY2025,USD,2025-12-31,cited in AFS note text or source_doc title
+E03,Anglo American,FY2025,USD,2025-12-31,cited in AFS note text or source_doc title
+E04,AngloGold Ashanti,FY2025,USD,2025-12-31,cited in AFS note text or source_doc title
+E05,Gold Fields,FY2025,USD,2025-12-31,cited in AFS note text or source_doc title
+E06,Valterra Platinum,FY2025,ZAR,2025-12-31,cited in AFS note text or source_doc title
+E07,OUTsurance Group,FY2025,ZAR,2025-06-30,cited in AFS note text or source_doc title
+E08,Sanlam,FY2025,ZAR,2025-12-31,cited in AFS note text or source_doc title
+E09,Shoprite Holdings,FY2025,ZAR,2025-06-30,cited in AFS note text or source_doc title
+E10,Bid Corporation,FY2025,ZAR,2025-06-30,cited in AFS note text or source_doc title
+E11,Pepkor Holdings,FY2025,ZAR,,UNVERIFIED
+E12,Clicks Group,FY2025,ZAR,,UNVERIFIED
+E13,NEPI Rockcastle,FY2025,EUR,,UNVERIFIED
+E14,Prosus,FY2026,USD,2026-03-31,cited in AFS note text or source_doc title
+E15,Naspers,FY2026,USD,2026-03-31,cited in AFS note text or source_doc title
+E16,MTN Group,FY2025,ZAR,2025-12-31,cited in AFS note text or source_doc title
+E17,Vodacom Group,FY2026,ZAR,2026-03-31,cited in AFS note text or source_doc title
+E18,The Bidvest Group,FY2025,ZAR,2025-06-30,cited in AFS note text or source_doc title
+E19,Aspen Pharmacare,FY2025,ZAR,2025-06-30,cited in AFS note text or source_doc title
+E20,Shaftesbury Capital plc,FY2025,GBP,2025-12-31,cited in AFS note text or source_doc title

@@ -1,0 +1,51 @@
+entity_id,entity_name,fy_label,rate_type,foreign_currency,zar_per_unit,status,needs_review,source_text
+E01,BHP Group,FY2025,average,,,NOT_DISCLOSED,0.0,Not disclosed
+E01,BHP Group,FY2025,closing,,,NOT_DISCLOSED,0.0,Not disclosed
+E02,Glencore,FY2025,average,USD,17.88,OK,,
+E02,Glencore,FY2025,closing,USD,16.56,OK,,
+E03,Anglo American,FY2025,average,USD,17.88,OK,,
+E03,Anglo American,FY2025,closing,USD,16.6,OK,,
+E04,AngloGold Ashanti,FY2025,average,USD,17.86,OK,,
+E04,AngloGold Ashanti,FY2025,closing,USD,16.56,OK,,
+E05,Gold Fields,FY2025,average,USD,17.88,OK,,
+E05,Gold Fields,FY2025,closing,,,NOT_DISCLOSED,0.0,Not disclosed
+E06,Valterra Platinum,FY2025,average,USD,17.8034,OK,0.0,USD: R17.8034; GBP: R23.5103; ZWG (Zimbabwe gold dollar): R0.6696 - average rates for FY2025.
+E06,Valterra Platinum,FY2025,average,GBP,23.5103,OK,0.0,USD: R17.8034; GBP: R23.5103; ZWG (Zimbabwe gold dollar): R0.6696 - average rates for FY2025.
+E06,Valterra Platinum,FY2025,average,ZWG,0.6696,OK,0.0,USD: R17.8034; GBP: R23.5103; ZWG (Zimbabwe gold dollar): R0.6696 - average rates for FY2025.
+E06,Valterra Platinum,FY2025,closing,USD,16.603,OK,0.0,USD: R16.6030; GBP: R22.3028; ZWG (Zimbabwe gold dollar): R0.6391 - year-end closing rates at 31 December 2025.
+E06,Valterra Platinum,FY2025,closing,GBP,22.3028,OK,0.0,USD: R16.6030; GBP: R22.3028; ZWG (Zimbabwe gold dollar): R0.6391 - year-end closing rates at 31 December 2025.
+E06,Valterra Platinum,FY2025,closing,ZWG,0.6391,OK,0.0,USD: R16.6030; GBP: R22.3028; ZWG (Zimbabwe gold dollar): R0.6391 - year-end closing rates at 31 December 2025.
+E07,OUTsurance Group,FY2025,average,,,NOT_DISCLOSED,1.0,"Not disclosed as a single average-rate table, average ZAR/AUD rate was 4.2% stronger year-on-year, but no absolute average rate figure is given in the AFS itself."
+E07,OUTsurance Group,FY2025,closing,AUD,11.68,OK,0.0,"AUD: R11.68 per AUD (30 June 2025; 2024: R12.13); USD: R17.75 per USD (30 June 2025; 2024: R18.19). No EUR closing rate is separately disclosed, though the EUR FEC's weighted average strike rate was R19.93 (see fx_forward_notional)."
+E07,OUTsurance Group,FY2025,closing,USD,17.75,OK,0.0,"AUD: R11.68 per AUD (30 June 2025; 2024: R12.13); USD: R17.75 per USD (30 June 2025; 2024: R18.19). No EUR closing rate is separately disclosed, though the EUR FEC's weighted average strike rate was R19.93 (see fx_forward_notional)."
+E08,Sanlam,FY2025,average,USD,17.85,OK,,
+E08,Sanlam,FY2025,closing,USD,16.57,OK,,
+E09,Shoprite Holdings,FY2025,average,,,NOT_DISCLOSED,0.0,Not disclosed
+E09,Shoprite Holdings,FY2025,closing,USD,17.86,OK,0.0,USD: R17.860; EUR: R20.890; Zambia kwacha: R0.757; Angola kwanza: R0.019; Mozambique metical: R0.277; Nigeria naira: R0.012 - all at 30 June 2025 (year-end).
+E09,Shoprite Holdings,FY2025,closing,EUR,20.89,OK,0.0,USD: R17.860; EUR: R20.890; Zambia kwacha: R0.757; Angola kwanza: R0.019; Mozambique metical: R0.277; Nigeria naira: R0.012 - all at 30 June 2025 (year-end).
+E09,Shoprite Holdings,FY2025,closing,Zambia kwacha,0.757,OK,0.0,USD: R17.860; EUR: R20.890; Zambia kwacha: R0.757; Angola kwanza: R0.019; Mozambique metical: R0.277; Nigeria naira: R0.012 - all at 30 June 2025 (year-end).
+E09,Shoprite Holdings,FY2025,closing,Angola kwanza,0.019,OK,0.0,USD: R17.860; EUR: R20.890; Zambia kwacha: R0.757; Angola kwanza: R0.019; Mozambique metical: R0.277; Nigeria naira: R0.012 - all at 30 June 2025 (year-end).
+E09,Shoprite Holdings,FY2025,closing,Mozambique metical,0.277,OK,0.0,USD: R17.860; EUR: R20.890; Zambia kwacha: R0.757; Angola kwanza: R0.019; Mozambique metical: R0.277; Nigeria naira: R0.012 - all at 30 June 2025 (year-end).
+E09,Shoprite Holdings,FY2025,closing,Nigeria naira,0.012,OK,0.0,USD: R17.860; EUR: R20.890; Zambia kwacha: R0.757; Angola kwanza: R0.019; Mozambique metical: R0.277; Nigeria naira: R0.012 - all at 30 June 2025 (year-end).
+E10,Bid Corporation,FY2025,average,,,NOT_DISCLOSED,0.0,Not disclosed
+E10,Bid Corporation,FY2025,closing,,,NOT_DISCLOSED,0.0,Not disclosed
+E11,Pepkor Holdings,FY2025,average,,,NOT_APPLICABLE,0.0,N/A – presentation currency is ZAR
+E11,Pepkor Holdings,FY2025,closing,,,NOT_APPLICABLE,0.0,N/A – presentation currency is ZAR
+E12,Clicks Group,FY2025,average,,,NOT_APPLICABLE,0.0,N/A – presentation currency is ZAR; currency-specific FX rates disclosed
+E12,Clicks Group,FY2025,closing,,,NOT_APPLICABLE,0.0,N/A – presentation currency is ZAR; currency-specific FX rates disclosed
+E13,NEPI Rockcastle,FY2025,average,,,NOT_APPLICABLE,0.0,N/A – financial statements presented in EUR
+E13,NEPI Rockcastle,FY2025,closing,,,NOT_APPLICABLE,0.0,N/A – financial statements presented in EUR
+E14,Prosus,FY2026,average,USD,17.301,OK,,
+E14,Prosus,FY2026,closing,USD,16.9492,OK,,
+E15,Naspers,FY2026,average,,,NOT_DISCLOSED,0.0,Not populated – no single aggregate ZAR rate applicable to USD-presented group AFS
+E15,Naspers,FY2026,closing,,,NOT_DISCLOSED,0.0,Not populated – no single aggregate ZAR rate applicable to USD-presented group AFS
+E16,MTN Group,FY2025,average,,,NOT_DISCLOSED,0.0,Not disclosed
+E16,MTN Group,FY2025,closing,,,NOT_DISCLOSED,0.0,Not disclosed
+E17,Vodacom Group,FY2026,average,,,NOT_DISCLOSED,0.0,Not disclosed
+E17,Vodacom Group,FY2026,closing,,,NOT_DISCLOSED,0.0,Not disclosed
+E18,The Bidvest Group,FY2025,average,,,NOT_DISCLOSED,0.0,Not disclosed
+E18,The Bidvest Group,FY2025,closing,,,NOT_DISCLOSED,0.0,Not disclosed
+E19,Aspen Pharmacare,FY2025,average,USD,18.164,OK,,
+E19,Aspen Pharmacare,FY2025,closing,USD,17.712,OK,,
+E20,Shaftesbury Capital plc,FY2025,average,,,NOT_DISCLOSED,0.0,Not disclosed
+E20,Shaftesbury Capital plc,FY2025,closing,,,NOT_DISCLOSED,0.0,Not disclosed

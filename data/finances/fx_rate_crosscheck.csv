@@ -1,0 +1,18 @@
+entity_id,entity_name,rate_type,self_reported,sarb,pct_diff,flag
+E02,Glencore,average,17.88,17.8829,-0.02,ok
+E02,Glencore,closing,16.56,16.598,-0.23,ok
+E03,Anglo American,average,17.88,17.8829,-0.02,ok
+E03,Anglo American,closing,16.6,16.598,0.01,ok
+E04,AngloGold Ashanti,average,17.86,17.8829,-0.13,ok
+E04,AngloGold Ashanti,closing,16.56,16.598,-0.23,ok
+E05,Gold Fields,average,17.88,17.8829,-0.02,ok
+E06,Valterra Platinum,average,17.8034,17.8829,-0.44,ok
+E06,Valterra Platinum,closing,16.603,16.598,0.03,ok
+E07,OUTsurance Group,closing,17.75,17.7758,-0.15,ok
+E08,Sanlam,average,17.85,17.8829,-0.18,ok
+E08,Sanlam,closing,16.57,16.598,-0.17,ok
+E09,Shoprite Holdings,closing,17.86,17.7758,0.47,ok
+E14,Prosus,average,17.301,17.3435,-0.25,ok
+E14,Prosus,closing,16.9492,17.0943,-0.85,ok
+E19,Aspen Pharmacare,average,18.164,18.1569,0.04,ok
+E19,Aspen Pharmacare,closing,17.712,17.7758,-0.36,ok

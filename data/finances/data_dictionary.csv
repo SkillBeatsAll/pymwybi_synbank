@@ -1,0 +1,22 @@
+field,definition,unit_type,table
+revenue_total,"Total revenue / turnover, income statement",currency,external_financials
+revenue_south_africa,"SA / domestic segment revenue, segmental note",currency,external_financials
+revenue_foreign,"Non-domestic revenue, segmental note - drives FX wallet",currency,external_financials
+cost_of_sales,"Cost of sales, income statement",currency,external_financials
+inventory,"Inventories, balance sheet + note - drives trade finance wallet",currency,external_financials
+trade_receivables,"Trade and other receivables, note",currency,external_financials
+trade_payables,"Trade and other payables, note",currency,external_financials
+gross_debt,"Total interest-bearing borrowings, gross",currency,external_financials
+debt_current,Interest-bearing borrowings repayable within 12 months,currency,external_financials
+debt_noncurrent,Interest-bearing borrowings repayable after 12 months,currency,external_financials
+debt_maturity_note_page,Reference to the debt maturity profile disclosure - drives DCM wallet,text,external_financials
+finance_costs,"Net finance charges / interest expense, income statement",currency,external_financials
+capex,"Additions to PPE, cash flow statement",currency,external_financials
+cash_and_equivalents,"Cash and cash equivalents, balance sheet",currency,external_financials
+fx_forward_notional,"Notional of FX forwards / hedges, financial instruments note",currency,external_financials
+committed_facilities_total,"Total committed banking facilities, borrowings note",currency,external_financials
+undrawn_facilities,Undrawn committed facilities - direct check on lending gap,currency,external_financials
+lenders_named,Banks named in the facilities note - compare to memo evidence,text,external_financials
+employees,Headcount - payroll wallet proxy,count,external_financials
+avg_zar_rate,Average ZAR exchange rate for the period,rate,fx_rates
+closing_zar_rate,Closing ZAR exchange rate at period end,rate,fx_rates
