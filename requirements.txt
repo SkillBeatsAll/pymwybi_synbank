@@ -1,2 +1,8 @@
+# Stage 1 (cleaning) and stage 2 (feature layer) both run on DuckDB alone.
 duckdb>=1.4.4,<2.0
+
+# pandas is used only for readable tabular output in analysis/ and for .df()
+# in exploratory queries. No pipeline module depends on it.
+pandas>=2.2
+
 pytest>=8.0,<9.0
