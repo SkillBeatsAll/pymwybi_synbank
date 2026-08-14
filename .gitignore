@@ -3,5 +3,46 @@ data/trade_finance.csv
 data/transactional_banking.csv
 data/processed/
 .venv/
-__pycache__/
 .pytest_cache/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+*.egg
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Streamlit ---
+.streamlit/secrets.toml
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Secrets — never commit API keys ---
+.env
+*.key
+secrets.*
+
+# --- Large / regenerable local artefacts ---
+# The three CSVs are meant to be committed (team decision — data lives in the repo),
+# but anything ad-hoc you generate while poking at the data locally shouldn't be.
+*.tmp.csv
+scratch/
+notebooks/*-checkpoint.ipynb
+
+# --- NOTE on large files ---
+# transactional_banking.csv is ~2.8M rows once it lands. If it's over ~50-100MB,
+# GitHub will warn or reject it on push — use Git LFS for it instead of removing
+# this line:
+#   git lfs track "data/raw/transactional_banking.csv"
+# Do NOT silently .gitignore the raw data files — the team agreed all hackathon
+# data lives in this repo so Claude Code has full context.

@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -265,7 +265,7 @@ def run_pipeline(input_dir: Path, output_dir: Path, overwrite: bool = False) -> 
         datasets[spec.output_name] = clean_dataset(source, output_dir / f"{spec.output_name}.parquet", spec)
 
     report = {
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "policy": {
             "exact_duplicate_policy": "Remove duplicate canonical business records only.",
             "identifier_conflict_policy": "Retain differing records sharing an identifier and flag them.",
