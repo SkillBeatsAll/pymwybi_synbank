@@ -57,6 +57,40 @@ def features(feature_run: dict) -> duckdb.DuckDBPyConnection:
 
 
 @pytest.fixture(scope="session")
+def wallet_run(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    """Build the wallet engine once into a temporary directory."""
+    if missing_feature_inputs():
+        pytest.skip("analytical inputs absent")
+    from src.syn_wallet import build_wallet
+
+    output_dir = tmp_path_factory.mktemp("wallet")
+    return build_wallet.run(output_dir=output_dir, overwrite=True)
+
+
+@pytest.fixture(scope="session")
+def wallet(wallet_run: dict) -> duckdb.DuckDBPyConnection:
+    """A connection with the wallet outputs and the feature table registered."""
+    connection = duckdb.connect(":memory:")
+    for name, path in wallet_run["outputs"].items():
+        connection.execute(f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM read_parquet('{path}')")
+    connection.execute(
+        "CREATE OR REPLACE VIEW client_features AS SELECT * FROM read_parquet"
+        f"('{config.PROCESSED_DIR / 'client_features.parquet'}')"
+    )
+    yield connection
+    connection.close()
+
+
+@pytest.fixture(scope="session")
+def worked_examples(wallet_run: dict) -> list[dict]:
+    """The generated worked examples, read back from disk."""
+    import json
+
+    path = Path(next(iter(wallet_run["outputs"].values()))).parent / "worked_examples.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="session")
 def built() -> duckdb.DuckDBPyConnection:
     """A live connection holding every intermediate table, not just the outputs.
 

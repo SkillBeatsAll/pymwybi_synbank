@@ -58,9 +58,19 @@ def build_entity_windows(connection: duckdb.DuckDBPyConnection) -> None:
 
 
 def _leg_volume(leg: str) -> str:
+    """Volume, count, and the non-SWIFT (domestic-channel) volume for one leg.
+
+    The domestic split is carried per leg, not just per client, because the
+    wallet models need a leg-level numerator that provably excludes the
+    SWIFT-channel rows overlapping the cross-border pillar. Deriving it by
+    applying the client's overall SWIFT share to each leg would be an
+    assumption; this is a measurement.
+    """
     return (
         f"COALESCE(SUM(t.amount_zar) FILTER (WHERE t.leg_type = '{leg}'), {_ZERO}) "
         f"AS txn_{leg}_volume_zar,\n               "
+        f"COALESCE(SUM(t.amount_zar) FILTER (WHERE t.leg_type = '{leg}' AND t.channel <> 'SWIFT'), "
+        f"{_ZERO}) AS txn_{leg}_domestic_volume_zar,\n               "
         f"COUNT(*) FILTER (WHERE t.leg_type = '{leg}') AS txn_{leg}_count"
     )
 

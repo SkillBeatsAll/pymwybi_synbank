@@ -9,11 +9,13 @@
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-tar -xzf data/data.tgz -C data/                              # restore raw inputs
-.venv/bin/python -m src.syn_wallet.clean_data --overwrite    # stage 1: cleaning
+tar -xzf data/data.tgz -C data/                               # restore raw inputs
+.venv/bin/python -m src.syn_wallet.clean_data --overwrite     # stage 1: cleaning
 .venv/bin/python -m src.syn_wallet.build_features --overwrite # stage 2: feature layer
-.venv/bin/python -m pytest                                   # 57 tests
-.venv/bin/python -m analysis.feature_layer_walkthrough       # guided tour of the outputs
+.venv/bin/python -m src.syn_wallet.build_wallet --overwrite   # stage 3: wallet engine
+.venv/bin/python -m pytest                                    # 133 tests
+.venv/bin/python -m analysis.feature_layer_walkthrough        # tour of the feature layer
+.venv/bin/python -m analysis.wallet_model_report              # regenerate MODEL_REPORT.md
 ```
 
 `data/processed/` is gitignored: every artefact below is regenerated from
@@ -101,3 +103,51 @@ period-aligned against partial internal data.
   cross-border payments by an amount the supplied fields cannot resolve.
 - No explained absence is imputed to zero. "Discloses zero debt" and "we could
   not find this client's debt" stay distinguishable.
+
+## Stage 3 — wallet and opportunity engine (`src/syn_wallet/build_wallet.py`)
+
+Five product pillars, each with its own economic model, its own denominator and
+its own confidence. Full methodology, formulas, coefficients, diagnostics and
+three worked client examples are in **[MODEL_REPORT.md](MODEL_REPORT.md)**,
+which is generated from the outputs rather than hand-written.
+
+| Pillar | Estimate | Denominator basis | Share? |
+|---|---|---|---|
+| Transactional / Cash Management | Collections + supplier payments the client must bank | `total_addressable_market` (accounting identity) | yes |
+| FX / Global Markets | Exposure × peer settlement intensity + disclosed hedging | `peer_benchmark_addressable` | yes |
+| Trade Finance | Import + export documentary + guarantees, sub-modelled | `peer_benchmark_addressable` | yes |
+| Lending | Refinancing + undrawn + working capital + capex funding | `financing_opportunity` | **no** — Syn Bank has no loan book |
+| Investment Banking | Ranked mandate-likelihood signal, no rand amount | `signal_only` | **no** |
+
+### Outputs (`data/processed/`)
+
+| File | Grain | Contents |
+|---|---|---|
+| `wallet_estimates.parquet` | 100 rows (20 × 5) | Observed, estimate, share, gap, confidence, opportunity score, ranks, flags, generated explanation |
+| `opportunities.parquet` | 100 rows | The ranked banker-facing view, best first |
+| `wallet_components.parquet` | long | Per-component breakdown with the driver behind each and whether it was disclosed or imputed |
+| `model_diagnostics.parquet` | long | Model weaknesses at client, product and sector scope, with severity |
+| `portfolio_summary.parquet` | 5 rows | Product-level totals, shares and confidence distribution |
+| `model_assumptions.parquet` / `model_benchmarks.parquet` / `model_sector_rules.parquet` | — | Every coefficient with its basis and rationale; benchmarks re-measured each run |
+| `wallet_confidence_detail.parquet` | 100 rows | The five confidence factors per client × product |
+| `model_report.json` / `worked_examples.json` | — | Machine-readable run report and three full audit trails |
+
+### The rules this stage holds to
+
+- **No pricing.** Every figure is a flow or balance magnitude, never bank
+  revenue. There is no fee, margin or basis-point assumption in the engine.
+- **No invented competitor wallet.** A gap is addressable business *not observed
+  in Syn Bank's supplied data* — never confirmed competitor-held business.
+- **No pillar blending.** SWIFT-channel transactional volume is excluded from
+  the cash numerator and not added to the FX numerator, so it is counted in
+  neither. The amount is published per client.
+- **No machine learning.** Every estimate is transparent arithmetic over
+  declared assumptions, recomputable by hand from the component breakdown.
+- **No silent zeros.** A missing driver resolves through a documented cascade or
+  stays NULL; a NULL denominator gives a NULL share, not a division.
+- **No absurd shares.** Where the modelled wallet falls below activity already
+  flowing, it is floored at observed, flagged, and the unfloored value retained
+  as `estimate_modelled_zar`.
+
+Share of wallet is **not** yet a dashboard or a GenAI layer — those are the next
+stages, and both consume these tables directly.
