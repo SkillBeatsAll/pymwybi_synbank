@@ -50,20 +50,23 @@ def _explain(row: pd.Series) -> str:
             f"import documentary {common.zar(row['import_component'])} "
             f"(cost of sales {common.zar(row['cogs_basis_zar'])}, "
             f"{row['cogs_source'].replace('_', ' ')}, at peer intensity "
-            f"{row['import_intensity']:.4f})"
+            f"{row['import_intensity']:.4f} across {row['import_benchmark_n']:,.0f} "
+            f"{row['import_benchmark_level']} peers, this client excluded)"
         )
     if pd.notna(row["export_component"]):
         pieces.append(
             f"export documentary {common.zar(row['export_component'])} "
             f"(foreign revenue {common.zar(row['foreign_revenue_basis_zar'])}, "
             f"{row['foreign_revenue_source'].replace('_', ' ')}, at peer intensity "
-            f"{row['export_intensity']:.4f})"
+            f"{row['export_intensity']:.4f} across {row['export_benchmark_n']:,.0f} "
+            f"{row['export_benchmark_level']} peers, this client excluded)"
         )
     if pd.notna(row["guarantee_component"]):
         pieces.append(
             f"guarantees {common.zar(row['guarantee_component'])} "
             f"(revenue {common.zar(row['revenue_total_zar'])} at peer intensity "
-            f"{row['guarantee_intensity']:.4f})"
+            f"{row['guarantee_intensity']:.4f} across {row['guarantee_benchmark_n']:,.0f} "
+            f"{row['guarantee_benchmark_level']} peers, this client excluded)"
         )
     body = " + ".join(pieces) if pieces else "no component applicable"
     sentence = (
@@ -94,10 +97,13 @@ def _explain(row: pd.Series) -> str:
     return sentence
 
 
-def build(frame: pd.DataFrame) -> common.PillarOutput:
+def build(
+    frame: pd.DataFrame, config: assumptions.ModelConfig | None = None
+) -> common.PillarOutput:
     """Estimate the trade-finance wallet for every client."""
     index = frame.index
     work = frame.copy()
+    config = config or assumptions.BASE_CONFIG
 
     rules = work["sector"].map(lambda sector: assumptions.sector_rule(PRODUCT, sector))
     applicability = rules.map(lambda rule: rule.applicability).astype("float64")
@@ -127,61 +133,44 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
         work, "revenue_foreign_zar", "revenue_total_zar", sector_foreign, portfolio_foreign
     )
 
-    # --- Benchmarks, measured on goods-trading clients only ---------------
-    benchmark_set = benchmarks.BenchmarkSet()
-    import_benchmark = benchmark_set.add(
-        benchmarks.measure_benchmark(
-            work,
-            IMPORT_BENCHMARK,
-            PRODUCT,
-            "tf_import_value_zar_fy",
-            "cost_of_sales_zar",
-            "Import instrument issuance per rand of disclosed cost of sales, at the portfolio "
-            "upper quartile. Measured only on goods-trading sectors that disclose cost of sales, "
-            "so an insurer's cost line cannot set a mining client's benchmark.",
-            eligible=cogs_comparable & goods_trading,
-        )
+    # --- Benchmarks, per client, measured on goods-trading peers only ------
+    peers = benchmarks.PeerBenchmarks(work, config)
+    import_intensity = peers.register(
+        IMPORT_BENCHMARK,
+        PRODUCT,
+        "tf_import_value_zar_fy",
+        "cost_of_sales_zar",
+        "Import instrument issuance per rand of disclosed cost of sales, at the upper quartile "
+        "of the client's peers. Measured only on goods-trading sectors that disclose cost of "
+        "sales, so an insurer's cost line cannot set a mining client's benchmark, and never on "
+        "the client being estimated.",
+        eligible=cogs_comparable & goods_trading,
     )
-    export_benchmark = benchmark_set.add(
-        benchmarks.measure_benchmark(
-            work,
-            EXPORT_BENCHMARK,
-            PRODUCT,
-            "tf_export_value_zar_fy",
-            "revenue_foreign_zar",
-            "Export instrument issuance per rand of disclosed foreign revenue, at the portfolio "
-            "upper quartile. Measured only on goods-trading clients that disclose foreign "
-            "revenue.",
-            eligible=goods_trading,
-        )
+    export_intensity = peers.register(
+        EXPORT_BENCHMARK,
+        PRODUCT,
+        "tf_export_value_zar_fy",
+        "revenue_foreign_zar",
+        "Export instrument issuance per rand of disclosed foreign revenue, at the upper quartile "
+        "of the client's peers. Measured only on goods-trading clients that disclose foreign "
+        "revenue.",
+        eligible=goods_trading,
     )
-    guarantee_benchmark = benchmark_set.add(
-        benchmarks.measure_benchmark(
-            work,
-            GUARANTEE_BENCHMARK,
-            PRODUCT,
-            "tf_guarantees_value_zar_fy",
-            "revenue_total_zar",
-            "Guarantee issuance per rand of revenue, at the portfolio upper quartile. Measured "
-            "across every sector because performance bonds, customs guarantees and rental "
-            "deposits are not goods trade and apply to financial and property groups too.",
-        )
+    guarantee_intensity = peers.register(
+        GUARANTEE_BENCHMARK,
+        PRODUCT,
+        "tf_guarantees_value_zar_fy",
+        "revenue_total_zar",
+        "Guarantee issuance per rand of revenue, at the upper quartile of the client's peers. "
+        "Measured across every sector because performance bonds, customs guarantees and rental "
+        "deposits are not goods trade and apply to financial and property groups too.",
     )
 
-    import_intensity = import_benchmark.value
-    export_intensity = export_benchmark.value
-    guarantee_intensity = guarantee_benchmark.value
-    nan_series = pd.Series(np.nan, index=index, dtype="float64")
-
-    import_component = (
-        (cogs.value * import_intensity) if import_intensity is not None else nan_series
-    ).where(~suppress_import, np.nan)
-    export_component = (
-        (foreign_revenue.value * export_intensity) if export_intensity is not None else nan_series
-    ).where(~suppress_export, np.nan)
-    guarantee_component = (
-        (revenue * guarantee_intensity) if guarantee_intensity is not None else nan_series
+    import_component = (cogs.value * import_intensity).where(~suppress_import, np.nan)
+    export_component = (foreign_revenue.value * export_intensity).where(
+        ~suppress_export, np.nan
     )
+    guarantee_component = revenue * guarantee_intensity
 
     modelled_estimate = pd.concat(
         [import_component, export_component, guarantee_component], axis=1
@@ -263,11 +252,15 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
             "foreign_revenue_basis_zar": foreign_revenue.value,
             "foreign_revenue_source": foreign_revenue.source,
             "revenue_total_zar": revenue,
-            "import_intensity": import_intensity if import_intensity is not None else np.nan,
-            "export_intensity": export_intensity if export_intensity is not None else np.nan,
-            "guarantee_intensity": (
-                guarantee_intensity if guarantee_intensity is not None else np.nan
-            ),
+            "import_intensity": import_intensity,
+            "export_intensity": export_intensity,
+            "guarantee_intensity": guarantee_intensity,
+            "import_benchmark_level": peers.levels(IMPORT_BENCHMARK),
+            "import_benchmark_n": peers.sample_sizes(IMPORT_BENCHMARK),
+            "export_benchmark_level": peers.levels(EXPORT_BENCHMARK),
+            "export_benchmark_n": peers.sample_sizes(EXPORT_BENCHMARK),
+            "guarantee_benchmark_level": peers.levels(GUARANTEE_BENCHMARK),
+            "guarantee_benchmark_n": peers.sample_sizes(GUARANTEE_BENCHMARK),
             "observed_zar": observed,
             "share": share_result.share,
             "fy_label": work["fy_label"],
@@ -282,6 +275,15 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
     )
     explanation = explain_frame.apply(_explain, axis=1)
 
+    # A suppressed sub-model contributes no coefficient, so its benchmark level
+    # must not appear in the published one. An insurer is on the guarantee
+    # benchmark alone, and the estimate table has to say so.
+    contributing_levels = [
+        peers.levels(IMPORT_BENCHMARK).where(~suppress_import, benchmarks.UNAVAILABLE),
+        peers.levels(EXPORT_BENCHMARK).where(~suppress_export, benchmarks.UNAVAILABLE),
+        peers.levels(GUARANTEE_BENCHMARK),
+    ]
+
     estimates = common.assemble(
         work,
         PRODUCT,
@@ -294,6 +296,23 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
         flags.series(),
         estimate_kind="addressable_wallet",
         estimate_modelled=modelled_estimate,
+        benchmark_level=benchmarks.dominant_level(contributing_levels),
+        benchmark_n=benchmarks.total_sample(
+            [
+                peers.sample_sizes(IMPORT_BENCHMARK),
+                peers.sample_sizes(EXPORT_BENCHMARK),
+                peers.sample_sizes(GUARANTEE_BENCHMARK),
+            ],
+            contributing_levels,
+        ),
+        benchmark_fallback_reason=(
+            "import: "
+            + peers.fallback_reasons(IMPORT_BENCHMARK)
+            + "; export: "
+            + peers.fallback_reasons(EXPORT_BENCHMARK)
+            + "; guarantees: "
+            + peers.fallback_reasons(GUARANTEE_BENCHMARK)
+        ),
     )
 
     components = common.component_rows(
@@ -320,5 +339,10 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
     flag_frame["product"] = PRODUCT
 
     return common.PillarOutput(
-        estimates, components, detail, flag_frame, benchmark_set.as_records()
+        estimates,
+        components,
+        detail,
+        flag_frame,
+        peers.coefficient_records(),
+        peers.metric_summary(),
     )

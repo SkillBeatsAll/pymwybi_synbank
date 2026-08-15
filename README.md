@@ -12,11 +12,16 @@ python -m venv .venv
 tar -xzf data/data.tgz -C data/                               # restore raw inputs
 .venv/bin/python -m src.syn_wallet.clean_data --overwrite     # stage 1: cleaning
 .venv/bin/python -m src.syn_wallet.build_features --overwrite # stage 2: feature layer
-.venv/bin/python -m src.syn_wallet.build_wallet --overwrite   # stage 3: wallet engine
-.venv/bin/python -m pytest                                    # 133 tests
+.venv/bin/python -m src.syn_wallet.build_wallet --overwrite --sensitivity   # stage 3
+.venv/bin/python -m pytest                                    # 219 tests
 .venv/bin/python -m analysis.feature_layer_walkthrough        # tour of the feature layer
-.venv/bin/python -m analysis.wallet_model_report              # regenerate MODEL_REPORT.md
+.venv/bin/python -m analysis.wallet_model_report              # → MODEL_REPORT.md
+.venv/bin/python -m analysis.model_sensitivity_report         # → MODEL_SENSITIVITY.md
+.venv/bin/python -m analysis.model_final_report               # → MODEL_FINAL_REPORT.md
 ```
+
+`--sensitivity` rebuilds the engine 36 times to price every arguable coefficient
+and takes a few seconds. Drop it for a fast rebuild of the model itself.
 
 `data/processed/` is gitignored: every artefact below is regenerated from
 `data/data.tgz` plus `data/finances/`, so a clean clone reproduces the whole
@@ -106,30 +111,82 @@ period-aligned against partial internal data.
 
 ## Stage 3 — wallet and opportunity engine (`src/syn_wallet/build_wallet.py`)
 
-Five product pillars, each with its own economic model, its own denominator and
-its own confidence. Full methodology, formulas, coefficients, diagnostics and
-three worked client examples are in **[MODEL_REPORT.md](MODEL_REPORT.md)**,
-which is generated from the outputs rather than hand-written.
+**Three Share of Wallet pillars and two opportunity signals.** Share of Wallet is
+a claim about a denominator — *of the activity this client must transact
+somewhere, what fraction runs through Syn Bank* — and only three pillars can
+support one. The other two publish opportunity, never share.
 
-| Pillar | Estimate | Denominator basis | Share? |
-|---|---|---|---|
-| Transactional / Cash Management | Collections + supplier payments the client must bank | `total_addressable_market` (accounting identity) | yes |
-| FX / Global Markets | Exposure × peer settlement intensity + disclosed hedging | `peer_benchmark_addressable` | yes |
-| Trade Finance | Import + export documentary + guarantees, sub-modelled | `peer_benchmark_addressable` | yes |
-| Lending | Refinancing + undrawn + working capital + capex funding | `financing_opportunity` | **no** — Syn Bank has no loan book |
-| Investment Banking | Ranked mandate-likelihood signal, no rand amount | `signal_only` | **no** |
+The final, stable analytical contract is **[MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md)**:
+methodology, terminology, every formula, the benchmark rules, both opportunity
+rankings, the published schema, and what a dashboard may and may not show.
+**[MODEL_SENSITIVITY.md](MODEL_SENSITIVITY.md)** prices every arguable
+coefficient across 36 model runs. **[MODEL_REPORT.md](MODEL_REPORT.md)** carries
+the per-client derivations and three worked examples. All three are generated
+from the outputs rather than hand-written.
+
+| # | Pillar | Role | Class | Estimate | Share? |
+|---|---|---|---|---|---|
+| 1 | Transactional / Cash Management | share of wallet | CORE | Addressable Cash Flow: revenue + cost of sales (accounting identity) | yes |
+| 2 | FX / Global Markets | share of wallet | CORE | Exposure × peer settlement intensity + disclosed hedging | yes |
+| 3 | Trade Finance | share of wallet | CORE | Import + export documentary + guarantees, sub-modelled | yes |
+| 4 | Lending | opportunity signal | SUPPORTING | Refinancing + undrawn + working capital + capex funding | **no** — Syn Bank has no loan book |
+| 5 | Investment Banking / Capital Markets | opportunity signal | SIGNAL_ONLY | Ranked mandate-likelihood signal, no rand amount | **no** |
+
+The CORE / SUPPORTING / SIGNAL_ONLY class is **assigned by measurement at build
+time**, not hardcoded, and published in `product_classification.parquet` so the
+application layer reads it from the data.
+
+### Addressable Cash Flow is not a wallet
+
+`addressable_cash_flow_zar` is the client's own operating turnover — money it
+must bank somewhere. `cash_management_wallet_zar`, the fee income a bank would
+earn on it, is **NULL for every client and never derived**: Syn Bank discloses no
+pricing, so any rand figure would rest on an invented basis-point assumption.
+Two columns, two names, so the flow figure cannot be read as bank revenue.
+
+### Peer benchmarks exclude the client they estimate
+
+Where no accounting identity fixes a coefficient it is measured from the
+client's peers at the 75th percentile — **with that client removed from the
+population**. Including it is circular in both directions: a heavily penetrated
+client raises the benchmark it is then measured against; a dormant one drags it
+down and makes its own share look healthy. A sector population is used wherever
+it reaches three peers after that exclusion, and the portfolio otherwise, with
+the reason recorded per client. `model_benchmarks.parquet` carries one row per
+client × metric with its level, sample size, median, P75, maximum and fallback
+reason.
+
+### Two opportunity rankings
+
+| Ranking | Question it answers | Construction |
+|---|---|---|
+| `commercial_opportunity_score` | Where is the largest commercially meaningful opportunity? | 0.45 × within-product gap percentile + 0.30 × confidence + 0.25 × headroom |
+| `opportunity_intensity` | Where is Syn Bank particularly under-penetrated relative to the client's scale? | `opportunity_zar / addressable_cash_flow_zar` — one ratio, no weights, no fitted coefficients |
+
+They disagree, and they are meant to. Show both; never average them.
 
 ### Outputs (`data/processed/`)
 
+**The analytical contract** — the only two tables the application layer reads:
+
 | File | Grain | Contents |
 |---|---|---|
-| `wallet_estimates.parquet` | 100 rows (20 × 5) | Observed, estimate, share, gap, confidence, opportunity score, ranks, flags, generated explanation |
+| `opportunity_engine.parquet` | 100 rows (20 × 5) | The canonical grain: observed, addressable, opportunity, share, both scores, both ranks, benchmark provenance, diagnostics, generated explanation |
+| `client_opportunity_profile.parquet` | 20 rows | Each pillar's headline side by side, plus top opportunity and recommended next product. **No column sums the pillars, and a build-time assertion prevents one appearing.** |
+
+Supporting detail:
+
+| File | Grain | Contents |
+|---|---|---|
+| `wallet_estimates.parquet` | 100 rows | The full internal estimate table the contract is projected from |
 | `opportunities.parquet` | 100 rows | The ranked banker-facing view, best first |
 | `wallet_components.parquet` | long | Per-component breakdown with the driver behind each and whether it was disclosed or imputed |
 | `model_diagnostics.parquet` | long | Model weaknesses at client, product and sector scope, with severity |
 | `portfolio_summary.parquet` | 5 rows | Product-level totals, shares and confidence distribution |
-| `model_assumptions.parquet` / `model_benchmarks.parquet` / `model_sector_rules.parquet` | — | Every coefficient with its basis and rationale; benchmarks re-measured each run |
+| `product_classification.parquet` / `product_confidence.parquet` | 5 rows each | The measured usability class, and mean/median confidence with HIGH/MEDIUM/LOW and major-flag percentages |
+| `model_assumptions.parquet` / `model_benchmarks.parquet` / `model_benchmark_metrics.parquet` / `model_sector_rules.parquet` | — | Every coefficient with its basis and rationale; peer coefficients re-measured per client each run |
 | `wallet_confidence_detail.parquet` | 100 rows | The five confidence factors per client × product |
+| `model_sensitivity*.parquet` (with `--sensitivity`) | 3,600 rows + summaries | Every client × product row under all 36 scenarios, plus per-scenario and per-product comparisons and the robustness verdicts |
 | `model_report.json` / `worked_examples.json` | — | Machine-readable run report and three full audit trails |
 
 ### The rules this stage holds to
@@ -148,6 +205,30 @@ which is generated from the outputs rather than hand-written.
 - **No absurd shares.** Where the modelled wallet falls below activity already
   flowing, it is floored at observed, flagged, and the unfloored value retained
   as `estimate_modelled_zar`.
+- **No self-benchmarking.** No client contributes to the peer population that
+  sets its own coefficient, and no sector benchmark is built from fewer than
+  three peers after that exclusion.
+- **No unpriced assumption.** Every arguable coefficient is swept across 36 model
+  runs, and each pillar carries a published robustness verdict.
+
+### What the sensitivity sweep found
+
+| Pillar | Verdict | Opportunity range across all 36 scenarios |
+|---|---|---|
+| Cash Management | **ROBUST** — untouched by every scenario | R14.25tn, identical throughout |
+| Lending | **ROBUST** — rank ρ ≥ 0.997, under 5% drift | R1.32tn – R1.44tn (1.1×) |
+| Trade Finance | assumption-sensitive | R39.28bn – R157.64bn (4.0×) |
+| FX / Global Markets | assumption-sensitive | R78.37bn – R583.70bn (7.4×) |
+| Investment Banking | no rand magnitude; signal ordering identical throughout | — |
+
+Nine or ten of the base model's top ten opportunities survive every scenario.
+The FX and trade **rand totals** should be presented as ranked opportunities with
+a stated range, never as a single number — that is the honest consequence of
+having no disclosed total for either activity, so the denominator *is* the
+coefficient.
 
 Share of wallet is **not** yet a dashboard or a GenAI layer — those are the next
-stages, and both consume these tables directly.
+stages, and both consume `opportunity_engine.parquet` and
+`client_opportunity_profile.parquet` directly. Read
+[MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md) §12 before building either: it
+lists what may and may not go on a screen.

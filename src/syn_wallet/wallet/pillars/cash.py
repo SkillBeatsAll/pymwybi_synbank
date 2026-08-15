@@ -1,9 +1,25 @@
 """Pillar 1 -- Transactional / Cash Management.
 
-**What the denominator is.** The annual gross operating payment-and-collection
-turnover the client must push through a bank account: money in from customers,
-money out to suppliers. Not revenue -- revenue is one of two legs, and the model
-says so in its component breakdown.
+**What the denominator is: Addressable Cash Flow.** The annual gross operating
+payment-and-collection turnover the client must push through a bank account:
+money in from customers, money out to suppliers. Not revenue -- revenue is one of
+two legs, and the model says so in its component breakdown.
+
+**Addressable Cash Flow is not a wallet, and the two have different columns.**
+
+``addressable_cash_flow_zar``
+    Revenue + cost of sales. A **client** flow magnitude: turnover that must be
+    banked somewhere. Share of wallet is the fraction of it Syn Bank handles, and
+    that share is the defensible number this pillar exists to produce.
+``cash_management_wallet_zar``
+    The fee income a bank earns on that flow. **NULL for every client, and
+    deliberately so.** Syn Bank is fictional and discloses no pricing, so any
+    rand figure here would rest on an invented basis-point assumption. R8.7tn of
+    Glencore addressable cash flow is not R8.7tn of anything a bank could earn,
+    and the schema is built so nobody can read it that way.
+
+The distinction costs nothing analytically -- share, gap and rank are unchanged --
+and removes the single most likely misreading of the deck.
 
 **Why only two legs.** Payroll, tax and intercompany sweeps are excluded from
 *both* sides of the ratio, not just one:
@@ -41,7 +57,7 @@ PRODUCT = assumptions.CASH
 
 def _explain(row: pd.Series) -> str:
     parts = [
-        f"Addressable cash-management turnover {common.zar(row['estimate_zar'])} = "
+        f"Addressable cash flow {common.zar(row['estimate_zar'])} = "
         f"collections {common.zar(row['collections_component'])} "
         f"(revenue {common.zar(row['revenue_total_zar'])}, accounting identity: revenue is "
         f"collected into a bank account)"
@@ -72,7 +88,12 @@ def _explain(row: pd.Series) -> str:
         )
     sentence += (
         f" A further {common.zar(row['out_of_scope_observed_zar'])} of intercompany, payroll and "
-        "tax activity sits outside this denominator by design."
+        "tax activity sits outside this denominator by design, carried as engagement signals "
+        "rather than as rand."
+    )
+    sentence += (
+        " This is the client's own turnover, not bank revenue: no fee wallet is estimated, "
+        "because Syn Bank discloses no pricing."
     )
     if row["payroll_instructions_per_1k_employees"] is not None and pd.notna(
         row["payroll_instructions_per_1k_employees"]
@@ -85,8 +106,15 @@ def _explain(row: pd.Series) -> str:
     return sentence
 
 
-def build(frame: pd.DataFrame) -> common.PillarOutput:
-    """Estimate the cash-management wallet for every client."""
+def build(
+    frame: pd.DataFrame, config: assumptions.ModelConfig | None = None
+) -> common.PillarOutput:
+    """Estimate addressable cash flow, and Syn Bank's share of it, per client.
+
+    ``config`` is accepted for symmetry and is unused: both coefficients here are
+    accounting identities, so no benchmark scenario can move this pillar. That
+    immunity is itself a finding, and MODEL_SENSITIVITY.md reports it.
+    """
     index = frame.index
     work = frame.copy()
 
@@ -201,10 +229,13 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
         scored.band,
         explanation,
         flags.series(),
-        estimate_kind="addressable_wallet",
+        estimate_kind=assumptions.ADDRESSABLE_CASH_FLOW,
         estimate_modelled=modelled_estimate,
         out_of_scope_observed=out_of_scope,
         overlap_excluded=overlap_excluded,
+        benchmark_fallback_reason=pd.Series(
+            "accounting_identity_no_peer_benchmark_needed", index=index, dtype="object"
+        ),
     )
 
     components = common.component_rows(
@@ -225,32 +256,53 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
     flag_frame["entity_id"] = work["entity_id"]
     flag_frame["product"] = PRODUCT
 
-    benchmark_records = [
+    # The one measured ratio this pillar uses is not a penetration benchmark at
+    # all: it imputes a *missing driver*, and it is leave-one-out by
+    # construction, since only clients that disclosed cost of sales contribute
+    # and only clients that did not need the imputation.
+    imputed_clients = int(cogs.source.isin(["sector_benchmark", "portfolio_benchmark"]).sum())
+    metric_records = [
         {
-            "name": "cash_cogs_to_revenue_sector_medians",
-            "value": None,
+            "metric": "cash_cogs_to_revenue_imputation",
             "product": PRODUCT,
             "numerator": "cost_of_sales_zar",
             "denominator": "revenue_total_zar",
             "percentile": 0.5,
-            "sample_size": int(sum(cogs_counts.values())),
+            "population_n": int(sum(cogs_counts.values())),
+            "population_median": portfolio_cogs,
+            "population_p75": None,
+            "population_max": None,
+            "clients_on_sector_benchmark": int((cogs.source == "sector_benchmark").sum()),
+            "clients_on_portfolio_benchmark": int(
+                (cogs.source == "portfolio_benchmark").sum()
+            ),
+            "clients_without_benchmark": int((cogs.source == "unavailable").sum()),
+            "coefficient_min": None,
+            "coefficient_max": None,
+            "coefficient_spread": None,
             "sample_entities": ", ".join(
                 f"{sector}:{count}" for sector, count in sorted(cogs_counts.items())
             ),
-            "sample_median": portfolio_cogs,
-            "sample_maximum": None,
             "basis": assumptions.PORTFOLIO_BENCHMARK,
             "rationale": (
                 "Sector median cost-of-sales intensity used to impute a supplier-payment "
-                "denominator where cost of sales is undisclosed. Restricted to sectors where "
-                "cost of sales is a procurement proxy, so insurance and real estate are never "
-                "imputed. Sector medians: "
-                + ", ".join(f"{sector} {value:.3f}" for sector, value in sorted(sector_cogs.items()))
-                + f"; portfolio fallback {portfolio_cogs:.3f}."
-                if portfolio_cogs is not None
-                else ""
+                "denominator where cost of sales is undisclosed, for "
+                f"{imputed_clients} of {len(work)} clients. Restricted to sectors where cost of "
+                "sales is a procurement proxy, so insurance and real estate are never imputed. "
+                "Self-inclusion is structurally impossible: a client that disclosed the field "
+                "does not need it imputed. Sector medians: "
+                + ", ".join(
+                    f"{sector} {value:.3f}" for sector, value in sorted(sector_cogs.items())
+                )
+                + (
+                    f"; portfolio fallback {portfolio_cogs:.3f}."
+                    if portfolio_cogs is not None
+                    else "; no portfolio fallback available."
+                )
             ),
         }
     ]
 
-    return common.PillarOutput(estimates, components, detail, flag_frame, benchmark_records)
+    return common.PillarOutput(
+        estimates, components, detail, flag_frame, [], metric_records
+    )
