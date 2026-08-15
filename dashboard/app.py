@@ -58,13 +58,13 @@ BASIS_CAPTION = {
 }
 RAND_PRODUCTS = (CASH, FX, TRADE, LENDING)  # IB has no estimate_zar at all
 
-# dataviz skill reference palette — categorical slots 1-5 (blue, orange, aqua, yellow, magenta)
-PILLAR_COLOR = {CASH: "#2a78d6", FX: "#1baf7a", TRADE: "#eb6834", LENDING: "#eda100", IB: "#e87ba4"}
-SEQUENTIAL_BLUE = ["#cde2fb", "#9ec5f4", "#5598e7", "#2a78d6", "#184f95", "#0d366b"]
-SURFACE = "#fcfcfb"
-INK = "#0b0b0f"
-MUTED_INK = "#898781"
-GRIDLINE = "#e1e0d9"
+# Neon navy/cyan/violet palette sampled from the hackathon reference image.
+PILLAR_COLOR = {CASH: "#18d8ff", FX: "#7a6cff", TRADE: "#cf40ff", LENDING: "#00f0c8", IB: "#ff4fd8"}
+SEQUENTIAL_BLUE = ["#07122f", "#0b2f7e", "#155fff", "#18d8ff", "#7a6cff", "#cf40ff"]
+SURFACE = "#081536"
+INK = "#f7fbff"
+MUTED_INK = "#8fb7e8"
+GRIDLINE = "rgba(24,216,255,0.18)"
 
 
 @st.cache_data
@@ -132,23 +132,40 @@ def inject_style() -> None:
         """
         <style>
         :root {
-            --surface: #fcfcfb;
-            --ink: #0b0b0f;
-            --ink-secondary: #52545c;
-            --ink-muted: #898781;
-            --border: rgba(11,11,15,0.08);
-            --shadow: 0 4px 18px rgba(20,25,40,0.07);
-            --shadow-hover: 0 12px 28px rgba(20,25,40,0.14);
-            --blue: #2a78d6;
-            --orange: #eb6834;
-            --aqua: #1baf7a;
-            --yellow: #eda100;
-            --magenta: #e87ba4;
+            --surface: #081536;
+            --surface-raised: rgba(10, 24, 62, 0.88);
+            --surface-deep: #03091f;
+            --ink: #f7fbff;
+            --ink-secondary: #bdd9ff;
+            --ink-muted: #8fb7e8;
+            --border: rgba(24,216,255,0.22);
+            --shadow: 0 10px 32px rgba(0, 6, 24, 0.42), 0 0 20px rgba(24, 216, 255, 0.08);
+            --shadow-hover: 0 16px 42px rgba(0, 6, 24, 0.55), 0 0 30px rgba(207, 64, 255, 0.18);
+            --blue: #155fff;
+            --aqua: #18d8ff;
+            --teal: #00f0c8;
+            --violet: #7a6cff;
+            --magenta: #cf40ff;
+            --pink: #ff4fd8;
         }
 
         .stApp {
-            background: linear-gradient(165deg, #f7f9fc 0%, #eef1f7 45%, #eaf1fb 100%);
+            background:
+                radial-gradient(circle at 82% 10%, rgba(24,216,255,0.22) 0, rgba(24,216,255,0.08) 22%, transparent 42%),
+                radial-gradient(circle at 60% 78%, rgba(207,64,255,0.26) 0, rgba(122,108,255,0.12) 24%, transparent 48%),
+                linear-gradient(145deg, #02061a 0%, #061536 48%, #03091f 100%);
             color: var(--ink) !important;
+        }
+        .stApp::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(24,216,255,0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(24,216,255,0.08) 1px, transparent 1px);
+            background-size: 72px 72px;
+            mask-image: linear-gradient(180deg, rgba(0,0,0,.5), transparent 72%);
         }
         .stApp p, .stApp span, .stApp li, .stApp label,
         [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p,
@@ -160,10 +177,11 @@ def inject_style() -> None:
         .stApp h1 {
             font-weight: 800 !important;
             letter-spacing: -0.02em;
-            background: linear-gradient(90deg, var(--ink) 0%, var(--blue) 55%, var(--aqua) 100%);
+            background: linear-gradient(90deg, var(--ink) 0%, var(--aqua) 38%, var(--violet) 68%, var(--pink) 100%);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent !important;
+            text-shadow: 0 0 28px rgba(24,216,255,0.25);
             animation: fadeSlideDown .6s ease both;
         }
         .hero-subtitle {
@@ -177,8 +195,9 @@ def inject_style() -> None:
             width: 110px;
             border-radius: 4px;
             margin: 10px 0 22px 0;
-            background: linear-gradient(90deg, var(--blue), var(--aqua), var(--orange), var(--yellow), var(--magenta));
+            background: linear-gradient(90deg, var(--aqua), var(--violet), var(--magenta), var(--pink));
             background-size: 300% 100%;
+            box-shadow: 0 0 18px rgba(24,216,255,0.7);
             animation: gradientShift 5s ease infinite;
         }
 
@@ -190,12 +209,12 @@ def inject_style() -> None:
         @keyframes pulseGlow { 0%,100% {opacity:1;} 50% {opacity:.55;} }
 
         [data-testid="stMetric"] {
-            background: var(--surface);
+            background: linear-gradient(180deg, rgba(10,24,62,0.94), rgba(5,13,38,0.94));
             border-radius: 14px;
             padding: 14px 18px 10px 18px;
             box-shadow: var(--shadow);
             border: 1px solid var(--border);
-            border-top: 3px solid var(--blue);
+            border-top: 3px solid var(--aqua);
             transition: transform .25s ease, box-shadow .25s ease;
             animation: fadeSlideUp .55s ease both;
         }
@@ -204,13 +223,25 @@ def inject_style() -> None:
             box-shadow: var(--shadow-hover);
         }
         [data-testid="stMetricValue"] { font-weight: 700 !important; }
-        [data-testid="stMetricLabel"] { color: var(--ink-secondary) !important; font-weight: 600; }
+        [data-testid="stMetricLabel"] {
+            color: var(--ink-secondary) !important;
+            font-size: 0.76rem;
+            font-weight: 600;
+            line-height: 1.25;
+            min-height: 2.1rem;
+            white-space: normal !important;
+        }
+        [data-testid="stMetricLabel"] * {
+            overflow: visible !important;
+            text-overflow: clip !important;
+            white-space: normal !important;
+        }
 
-        div[data-testid="column"]:nth-of-type(1) [data-testid="stMetric"] { animation-delay: .04s; border-top-color: var(--blue); }
-        div[data-testid="column"]:nth-of-type(2) [data-testid="stMetric"] { animation-delay: .09s; border-top-color: var(--aqua); }
-        div[data-testid="column"]:nth-of-type(3) [data-testid="stMetric"] { animation-delay: .14s; border-top-color: var(--orange); }
-        div[data-testid="column"]:nth-of-type(4) [data-testid="stMetric"] { animation-delay: .19s; border-top-color: var(--yellow); }
-        div[data-testid="column"]:nth-of-type(5) [data-testid="stMetric"] { animation-delay: .24s; border-top-color: var(--magenta); }
+        div[data-testid="column"]:nth-of-type(1) [data-testid="stMetric"] { animation-delay: .04s; border-top-color: var(--aqua); }
+        div[data-testid="column"]:nth-of-type(2) [data-testid="stMetric"] { animation-delay: .09s; border-top-color: var(--violet); }
+        div[data-testid="column"]:nth-of-type(3) [data-testid="stMetric"] { animation-delay: .14s; border-top-color: var(--magenta); }
+        div[data-testid="column"]:nth-of-type(4) [data-testid="stMetric"] { animation-delay: .19s; border-top-color: var(--teal); }
+        div[data-testid="column"]:nth-of-type(5) [data-testid="stMetric"] { animation-delay: .24s; border-top-color: var(--pink); }
 
         [data-baseweb="tab-list"] { gap: 6px; }
         [data-baseweb="tab"] {
@@ -220,14 +251,16 @@ def inject_style() -> None:
             transition: background .2s ease, color .2s ease;
         }
         [data-baseweb="tab"] p { color: inherit !important; }
-        [data-baseweb="tab"]:hover { background: rgba(42,120,214,0.08); }
-        [data-baseweb="tab"][aria-selected="true"] { color: var(--blue) !important; }
+        [data-baseweb="tab"]:hover { background: rgba(24,216,255,0.12); }
+        [data-baseweb="tab"][aria-selected="true"] { color: var(--aqua) !important; }
         [data-baseweb="tab-highlight"] {
-            background-color: var(--blue) !important;
+            background: linear-gradient(90deg, var(--aqua), var(--magenta)) !important;
             transition: left .35s cubic-bezier(.4,0,.2,1), width .35s cubic-bezier(.4,0,.2,1) !important;
         }
 
         [data-testid="stVerticalBlockBorderWrapper"] {
+            background: var(--surface-raised);
+            border-color: var(--border) !important;
             border-radius: 16px !important;
             box-shadow: var(--shadow);
             transition: box-shadow .3s ease, transform .3s ease;
@@ -235,11 +268,19 @@ def inject_style() -> None:
         }
         [data-testid="stVerticalBlockBorderWrapper"]:hover { box-shadow: var(--shadow-hover); }
 
-        [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+        [data-testid="stDataFrame"] {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
 
         .stButton>button {
             border-radius: 10px;
             font-weight: 600;
+            border: 1px solid rgba(24,216,255,0.42);
+            background: linear-gradient(90deg, rgba(24,216,255,0.22), rgba(207,64,255,0.22));
+            color: var(--ink);
             transition: transform .15s ease, box-shadow .15s ease;
         }
         .stButton>button:not(:disabled):hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
@@ -251,7 +292,7 @@ def inject_style() -> None:
         }
 
         .conf-track {
-            background: rgba(11,11,15,0.08);
+            background: rgba(143,183,232,0.16);
             border-radius: 6px;
             height: 7px;
             overflow: hidden;
@@ -274,8 +315,9 @@ def inject_style() -> None:
             border-radius: 999px;
             font-size: 0.68rem;
             font-weight: 600;
-            background: rgba(235,104,52,0.12);
-            color: #b8501f !important;
+            background: rgba(207,64,255,0.18);
+            border: 1px solid rgba(255,79,216,0.35);
+            color: #ffd6fb !important;
         }
 
         @media (max-width: 700px) {
