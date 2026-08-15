@@ -11,8 +11,6 @@ changes::
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
 import duckdb
 import pandas as pd
 
@@ -32,6 +30,9 @@ def _connect() -> duckdb.DuckDBPyConnection:
         "portfolio_summary",
         "model_assumptions",
         "model_benchmarks",
+        "model_benchmark_metrics",
+        "product_classification",
+        "product_confidence",
         "model_sector_rules",
         "client_features",
     ]
@@ -146,8 +147,8 @@ def build_report() -> str:
     add(
         "```\n"
         "wallet = export_settlement + import_settlement + hedging_execution\n"
-        "       = foreign_revenue_basis x P75(xb_inbound / foreign_revenue)\n"
-        "       + cost_of_sales_basis  x P75(xb_outbound / cost_of_sales)\n"
+        "       = foreign_revenue_basis x peer_P75(xb_inbound / foreign_revenue)\n"
+        "       + cost_of_sales_basis  x peer_P75(xb_outbound / cost_of_sales)\n"
         "       + fx_forward_notional  x 1.0     (one roll, a deliberate floor)\n"
         "observed = cross-border payment volume (fiscal year)\n"
         "```\n"
@@ -155,16 +156,17 @@ def build_report() -> str:
     add(
         "Foreign revenue is an **exposure** variable, never equated with settlement volume: MTN's "
         "Nigerian revenue is collected in naira inside Nigeria and never crosses a border. The "
-        "exposure-to-volume conversion is measured from the portfolio. Directions are split so "
+        "exposure-to-volume conversion is measured from the client's peers -- the client itself is "
+        "excluded from the population that sets its own coefficient. Directions are split so "
         "inbound and outbound demand cannot double count.\n"
     )
     add("### 3. Trade Finance\n")
     add(
         "```\n"
         "wallet = import_documentary + export_documentary + guarantees\n"
-        "       = cost_of_sales_basis  x P75(tf_import / cost_of_sales)     [suppressed: insurance, real_estate]\n"
-        "       + foreign_revenue_basis x P75(tf_export / foreign_revenue)  [suppressed: insurance, real_estate]\n"
-        "       + revenue_total_zar     x P75(tf_guarantees / revenue)      [all sectors]\n"
+        "       = cost_of_sales_basis  x peer_P75(tf_import / cost_of_sales)     [suppressed: insurance, real_estate]\n"
+        "       + foreign_revenue_basis x peer_P75(tf_export / foreign_revenue)  [suppressed: insurance, real_estate]\n"
+        "       + revenue_total_zar     x peer_P75(tf_guarantees / revenue)      [all sectors]\n"
         "observed = instruments dated in the fiscal year, all four statuses (annual issuance)\n"
         "```\n"
     )
@@ -254,18 +256,25 @@ def build_report() -> str:
     add("### Coefficients measured from this portfolio\n")
     add(
         "These are not chosen, they are measured at build time from the feature table and "
-        "rewritten on every run. `value` is the 75th percentile of observed intensity across the "
-        "contributing clients — 'what a well-penetrated peer achieves' — except the "
-        "working-capital ratio, which uses the median because it is a structural funding norm "
-        "rather than a penetration frontier.\n"
+        "rewritten on every run. Each is the 75th percentile of observed intensity across the "
+        "client's **peers** — 'what a well-penetrated peer achieves' — except the working-capital "
+        "ratio, which uses the median because it is a structural funding norm rather than a "
+        "penetration frontier. **The client being estimated is always excluded from the "
+        "population that sets its own coefficient**, and a sector population is used wherever it "
+        "reaches three peers after that exclusion, so the coefficient differs per client. "
+        "`model_benchmarks.parquet` carries one row per client x metric; the table below "
+        "summarises the populations behind them. See `MODEL_FINAL_REPORT.md` section 4.\n"
     )
     benchmarks = connection.execute(
         """
-        SELECT name AS "Name", product AS "Pillar",
-               ROUND("value", 6) AS "Coefficient", sample_size AS "n",
-               ROUND(sample_median, 6) AS "Sample median", ROUND(sample_maximum, 6) AS "Sample max",
+        SELECT metric AS "Metric", product AS "Pillar",
+               ROUND(population_p75, 6) AS "Population P75", population_n AS "n",
+               ROUND(population_median, 6) AS "Population median",
+               ROUND(population_max, 6) AS "Population max",
+               clients_on_sector_benchmark AS "On sector",
+               clients_on_portfolio_benchmark AS "On portfolio",
                numerator AS "Numerator", denominator AS "Denominator"
-        FROM model_benchmarks WHERE "value" IS NOT NULL ORDER BY product, name
+        FROM model_benchmark_metrics ORDER BY product, metric
         """
     ).df()
     add(_table(benchmarks))

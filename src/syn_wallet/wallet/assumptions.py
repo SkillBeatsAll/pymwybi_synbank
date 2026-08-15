@@ -31,7 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-METHODOLOGY_VERSION = "wallet-1.0.0"
+METHODOLOGY_VERSION = "wallet-1.1.0"
 
 # ---------------------------------------------------------------------------
 # Products
@@ -53,10 +53,102 @@ PRODUCT_LABELS = {
     IB: "Investment Banking / Capital Markets",
 }
 
+# ---------------------------------------------------------------------------
+# Pillar hierarchy
+# ---------------------------------------------------------------------------
+#
+# Share of Wallet is a claim about a denominator: "of the activity this client
+# must transact somewhere, what fraction runs through Syn Bank". Three pillars
+# can support that claim because a defensible total exists for each. Two cannot,
+# and calling their output a share would be inventing the denominator.
+
+SHARE_OF_WALLET = "share_of_wallet"
+OPPORTUNITY_SIGNAL = "opportunity_signal"
+
+#: The three Share of Wallet pillars, in reporting order.
+WALLET_PILLARS = (CASH, FX, TRADE)
+#: The two pillars reported as opportunity signals, never as a share.
+SIGNAL_PILLARS = (LENDING, IB)
+
+PILLAR_ROLE = {
+    CASH: SHARE_OF_WALLET,
+    FX: SHARE_OF_WALLET,
+    TRADE: SHARE_OF_WALLET,
+    LENDING: OPPORTUNITY_SIGNAL,
+    IB: OPPORTUNITY_SIGNAL,
+}
+
+PILLAR_ROLE_NOTES = {
+    SHARE_OF_WALLET: (
+        "A defensible total exists for this activity -- an accounting identity for cash, a peer "
+        "benchmark applied to a disclosed exposure for FX and trade -- so observed activity can be "
+        "divided by it and the result called a share."
+    ),
+    OPPORTUNITY_SIGNAL: (
+        "No share is computed and none should be quoted. Syn Bank's datasets contain no loan book "
+        "and no deal record, so there is no observed numerator to divide. Lending publishes a "
+        "rand-denominated financing need; investment banking publishes a ranked signal only."
+    ),
+}
+
+#: Product usability classes. Assigned by measurement in :mod:`.contract`, not
+#: by hand, so a dashboard reads the class from the data rather than hardcoding
+#: which products it trusts.
+CORE = "CORE"
+SUPPORTING = "SUPPORTING"
+SIGNAL_ONLY = "SIGNAL_ONLY"
+
+PRODUCT_CLASS_NOTES = {
+    CORE: (
+        "Rand denominator and observed numerator both exist for the majority of the portfolio, so "
+        "a share of wallet is computable and can be shown as a headline number."
+    ),
+    SUPPORTING: (
+        "A rand amount exists but no observed numerator does, so no share is computable. Show the "
+        "rand amount as an opportunity indicator alongside a core pillar, never as a share."
+    ),
+    SIGNAL_ONLY: (
+        "No rand amount is estimable at all. Show the ranked signal and the category, never a "
+        "currency figure."
+    ),
+}
+
+# ---------------------------------------------------------------------------
+# Terminology
+# ---------------------------------------------------------------------------
+#
+# Naming discipline, because the wrong noun is a commercial claim. The cash
+# pillar's rand figure is the client's own gross operating turnover -- money it
+# must move through some bank. It is not bank revenue, not a fee pool, and not
+# an amount Syn Bank could earn.
+
+ADDRESSABLE_CASH_FLOW = "addressable_cash_flow"
+
+TERMINOLOGY = {
+    "addressable_cash_flow_zar": (
+        "Addressable Cash Flow -- the client's annual gross operating collections and supplier "
+        "payments (revenue + cost of sales), the turnover it must push through a bank account "
+        "somewhere. A flow magnitude belonging to the client, not to any bank."
+    ),
+    "cash_management_wallet_zar": (
+        "Cash Management Wallet -- the fee income a bank would earn on that flow. NOT ESTIMABLE "
+        "and published as NULL for every client. Syn Bank is fictional and discloses no pricing, "
+        "so converting flow to wallet would need an invented basis-point assumption."
+    ),
+    "observed_zar": (
+        "The in-scope activity Syn Bank actually handled for this client in the fiscal year, "
+        "measured from the internal datasets. Never an estimate."
+    ),
+    "opportunity_zar": (
+        "Addressable activity not observed in Syn Bank's data. Not a claim that a competitor "
+        "holds it, and never a revenue figure."
+    ),
+}
+
 #: What the ``estimate_zar`` column means for each product. These bases are not
 #: interchangeable and must never be compared as one number across products.
 ESTIMATE_BASIS = {
-    CASH: "total_addressable_market",
+    CASH: ADDRESSABLE_CASH_FLOW,
     FX: "peer_benchmark_addressable",
     TRADE: "peer_benchmark_addressable",
     LENDING: "financing_opportunity",
@@ -64,9 +156,11 @@ ESTIMATE_BASIS = {
 }
 
 ESTIMATE_BASIS_NOTES = {
-    "total_addressable_market": (
-        "The client's whole disclosed flow for this activity, across all of its banks. "
-        "Share is the fraction Syn Bank currently handles."
+    ADDRESSABLE_CASH_FLOW: (
+        "The client's whole disclosed operating payment-and-collection turnover, across all of its "
+        "banks: revenue collected in plus cost of sales paid out. Share is the fraction of that "
+        "flow Syn Bank currently handles. It is a client flow magnitude, never bank revenue -- the "
+        "fee wallet on it is not estimable and is published as NULL."
     ),
     "peer_benchmark_addressable": (
         "No disclosure states this client's total activity across all banks, so the wallet is "
@@ -248,7 +342,31 @@ STATIC_ASSUMPTIONS: tuple[Assumption, ...] = (
         "Portfolio benchmarks are set at the 75th percentile of observed intensity, not the "
         "maximum. The maximum would let a single outlier define every client's wallet; the "
         "median would define the wallet as average performance and understate the opportunity. "
-        "The upper quartile is 'what a well-penetrated peer achieves'.",
+        "The upper quartile is 'what a well-penetrated peer achieves'. MODEL_SENSITIVITY.md "
+        "measures what the median and the 80th percentile would do instead.",
+    ),
+    Assumption(
+        "benchmark_leave_one_out", 1.0, "boolean", "all", None, STRUCTURAL,
+        "Every peer benchmark excludes the client it is being used to estimate. Including a "
+        "client in the population that sets its own coefficient is circular: a heavily penetrated "
+        "client raises the benchmark it is then measured against, flattening its own apparent "
+        "gap, and a client with no activity drags the benchmark down and makes its own share look "
+        "healthy. With twenty clients a single one is 5% of the population and up to a third of "
+        "its sector, so the circularity is material, not theoretical.",
+    ),
+    Assumption(
+        "sector_benchmark_min_sample", 3.0, "peer observations", "all", None, JUDGEMENT,
+        "A sector benchmark is only formed from at least three peers, counted AFTER the client "
+        "being estimated is removed. Below three, one peer's intensity would set the sector's "
+        "frontier, and the estimate would be a restatement of a single company. Sectors that "
+        "cannot reach three fall back to the portfolio benchmark, and the fallback reason is "
+        "recorded per client rather than inferred.",
+    ),
+    Assumption(
+        "benchmark_min_sample", 4.0, "peer observations", "all", None, JUDGEMENT,
+        "A portfolio benchmark needs at least four contributors, again after the estimated client "
+        "is removed. Below four an upper-quartile intensity is an anecdote, and the coefficient is "
+        "published as unavailable rather than as a number.",
     ),
     Assumption(
         "opportunity_weight_gap", 0.45, "weight", "all", None, JUDGEMENT,
@@ -275,6 +393,22 @@ STATIC_ASSUMPTIONS: tuple[Assumption, ...] = (
         "MEDIUM band floor. Below it an estimate leans materially on imputation or on a proxy "
         "whose economic logic is weak for the sector.",
     ),
+    Assumption(
+        "cash_management_fee_wallet", None, "not estimable", CASH, None, STRUCTURAL,
+        "The fee wallet on addressable cash flow is published as NULL for every client and is "
+        "never derived. Syn Bank is fictional and discloses no pricing, so any rand fee figure "
+        "would rest on an invented basis-point assumption. The flow figure is the client's "
+        "turnover, not the bank's revenue, and the two are given different column names so a "
+        "reader cannot mistake one for the other.",
+    ),
+    Assumption(
+        "opportunity_intensity_denominator", None, "addressable cash flow", "all", None,
+        ACCOUNTING_IDENTITY,
+        "Opportunity intensity divides a product's rand gap by the client's OWN addressable cash "
+        "flow (revenue + cost of sales). One denominator per client, identity-anchored and "
+        "available for all twenty, so the five products share a common scale and the metric "
+        "carries no fitted coefficient at all. It is a ratio, not a weighted index.",
+    ),
 )
 
 # Convenience lookups.
@@ -291,6 +425,69 @@ IB_THRESHOLDS = {
     "leverage": 0.50,
     "cost_of_debt": 0.09,
 }
+
+# ---------------------------------------------------------------------------
+# Run configuration
+# ---------------------------------------------------------------------------
+
+#: Benchmark scope policies. ``sector_preferred`` uses a sector population when
+#: it can reach the minimum sample after excluding the estimated client, and
+#: falls back to the portfolio otherwise. ``portfolio_only`` never forms a sector
+#: benchmark; it exists so the sensitivity analysis can price the sector choice.
+SECTOR_PREFERRED = "sector_preferred"
+PORTFOLIO_ONLY = "portfolio_only"
+
+BENCHMARK_SCOPES = (SECTOR_PREFERRED, PORTFOLIO_ONLY)
+
+
+@dataclass(frozen=True)
+class ModelConfig:
+    """The knobs a sensitivity run is allowed to turn.
+
+    Everything here has a defended default. The dataclass exists so that an
+    alternative can be *run* rather than argued about: :mod:`.sensitivity`
+    rebuilds the whole engine under each variant and measures what moves.
+
+    ``label`` names the scenario in the sensitivity outputs. It never affects a
+    number.
+    """
+
+    label: str = "base"
+    #: Percentile of peer intensity that defines a well-penetrated peer.
+    benchmark_percentile: float = BENCHMARK_PERCENTILE
+    #: Exclude each client from the population that sets its own coefficient.
+    leave_one_out: bool = True
+    #: Sector-preferred with a portfolio fallback, or portfolio only.
+    benchmark_scope: str = SECTOR_PREFERRED
+    #: The single underived coefficient in the engine.
+    capex_debt_funded_share: float = CAPEX_DEBT_FUNDED_SHARE
+
+    def __post_init__(self) -> None:
+        if self.benchmark_scope not in BENCHMARK_SCOPES:
+            raise ValueError(
+                f"benchmark_scope must be one of {BENCHMARK_SCOPES}, got {self.benchmark_scope!r}"
+            )
+        if not 0.0 < self.benchmark_percentile <= 1.0:
+            raise ValueError(
+                f"benchmark_percentile must be in (0, 1], got {self.benchmark_percentile!r}"
+            )
+        if not 0.0 <= self.capex_debt_funded_share <= 1.0:
+            raise ValueError(
+                f"capex_debt_funded_share must be in [0, 1], got {self.capex_debt_funded_share!r}"
+            )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "scenario": self.label,
+            "benchmark_percentile": self.benchmark_percentile,
+            "leave_one_out": self.leave_one_out,
+            "benchmark_scope": self.benchmark_scope,
+            "capex_debt_funded_share": self.capex_debt_funded_share,
+        }
+
+
+#: The published model. Every deliverable quotes this configuration.
+BASE_CONFIG = ModelConfig()
 
 # ---------------------------------------------------------------------------
 # Sector applicability

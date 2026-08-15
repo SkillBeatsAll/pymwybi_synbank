@@ -117,8 +117,15 @@ def _explain(row: pd.Series) -> str:
     return sentence
 
 
-def build(frame: pd.DataFrame) -> common.PillarOutput:
-    """Score investment-banking mandate likelihood for every client."""
+def build(
+    frame: pd.DataFrame, config: assumptions.ModelConfig | None = None
+) -> common.PillarOutput:
+    """Score investment-banking mandate likelihood for every client.
+
+    Takes ``config`` for signature symmetry with the other pillars and uses
+    nothing from it: every threshold here is a declared judgement and none of
+    them is a peer coefficient, so no sensitivity scenario moves this pillar.
+    """
     index = frame.index
     work = frame.copy()
 

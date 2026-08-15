@@ -82,6 +82,41 @@ def wallet(wallet_run: dict) -> duckdb.DuckDBPyConnection:
 
 
 @pytest.fixture(scope="session")
+def intelligence_run(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    """Build stages 3 and 4 end to end into a temporary directory.
+
+    Runs the wallet engine *with* the sensitivity sweep, because the
+    intelligence layer's ranges come from it and testing the layer without it
+    would only exercise the degraded path.
+    """
+    if missing_feature_inputs():
+        pytest.skip("analytical inputs absent")
+    from src.syn_wallet import build_intelligence, build_wallet
+
+    output_dir = tmp_path_factory.mktemp("intelligence")
+    build_wallet.run(output_dir=output_dir, overwrite=True, with_sensitivity=True)
+    return build_intelligence.run(
+        processed_dir=output_dir, output_dir=output_dir, overwrite=True
+    )
+
+
+@pytest.fixture(scope="session")
+def intelligence(intelligence_run: dict) -> duckdb.DuckDBPyConnection:
+    """A connection with every intelligence output registered as a view."""
+    connection = duckdb.connect(":memory:")
+    for name, path in intelligence_run["outputs"].items():
+        connection.execute(f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM read_parquet('{path}')")
+    output_dir = Path(next(iter(intelligence_run["outputs"].values()))).parent
+    for name in ("opportunity_engine", "client_opportunity_profile", "model_sensitivity"):
+        connection.execute(
+            f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM "
+            f"read_parquet('{output_dir / f'{name}.parquet'}')"
+        )
+    yield connection
+    connection.close()
+
+
+@pytest.fixture(scope="session")
 def worked_examples(wallet_run: dict) -> list[dict]:
     """The generated worked examples, read back from disk."""
     import json

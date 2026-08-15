@@ -28,6 +28,9 @@ SHARE_NON_POSITIVE_DENOMINATOR = "non_positive_denominator"
 SHARE_NO_OBSERVED = "no_observed_activity_in_dataset"
 SHARE_CAPPED = "capped_observed_exceeds_estimate"
 
+#: ``benchmark_level`` for a pillar that uses no peer coefficient at all.
+NO_BENCHMARK = "not_applicable"
+
 
 def apply_observed_floor(
     estimate: pd.Series, observed: pd.Series
@@ -207,6 +210,7 @@ ESTIMATE_COLUMNS = (
     "fiscal_year_end",
     "product",
     "product_label",
+    "pillar_role",
     "estimate_basis",
     "estimate_kind",
     "observed_zar",
@@ -219,6 +223,9 @@ ESTIMATE_COLUMNS = (
     "gap_basis",
     "confidence",
     "confidence_band",
+    "benchmark_level",
+    "benchmark_n",
+    "benchmark_fallback_reason",
     "out_of_scope_observed_zar",
     "overlap_excluded_zar",
     "signal_score",
@@ -236,7 +243,10 @@ class PillarOutput:
     components: pd.DataFrame
     confidence_detail: pd.DataFrame
     flags: pd.DataFrame
+    #: One record per client x benchmark metric: the coefficient actually used.
     benchmarks: list[dict[str, Any]] = field(default_factory=list)
+    #: One record per benchmark metric describing the whole peer population.
+    benchmark_metrics: list[dict[str, Any]] = field(default_factory=list)
 
 
 def component_rows(
@@ -292,6 +302,9 @@ def assemble(
     out_of_scope_observed: pd.Series | None = None,
     overlap_excluded: pd.Series | None = None,
     signal_score: pd.Series | None = None,
+    benchmark_level: pd.Series | None = None,
+    benchmark_n: pd.Series | None = None,
+    benchmark_fallback_reason: pd.Series | None = None,
 ) -> pd.DataFrame:
     """Build one pillar's slice of ``wallet_estimates`` in the standard schema."""
     nan = pd.Series(np.nan, index=frame.index, dtype="float64")
@@ -304,6 +317,7 @@ def assemble(
             "fiscal_year_end": frame["fiscal_year_end"],
             "product": product,
             "product_label": assumptions.PRODUCT_LABELS[product],
+            "pillar_role": assumptions.PILLAR_ROLE[product],
             "estimate_basis": assumptions.ESTIMATE_BASIS[product],
             "estimate_kind": estimate_kind,
             "observed_zar": observed if observed is not None else nan,
@@ -318,6 +332,26 @@ def assemble(
             "gap_basis": share_result.gap_basis,
             "confidence": confidence,
             "confidence_band": confidence_band,
+            # Which peer population set this pillar's coefficients for this
+            # client. NULL where the pillar uses no peer benchmark at all --
+            # cash is an accounting identity, investment banking is a signal.
+            "benchmark_level": (
+                benchmark_level
+                if benchmark_level is not None
+                else pd.Series(NO_BENCHMARK, index=frame.index, dtype="object")
+            ),
+            "benchmark_n": (
+                benchmark_n
+                if benchmark_n is not None
+                else pd.Series(pd.NA, index=frame.index, dtype="Int64")
+            ),
+            "benchmark_fallback_reason": (
+                benchmark_fallback_reason
+                if benchmark_fallback_reason is not None
+                else pd.Series(
+                    "pillar_uses_no_peer_benchmark", index=frame.index, dtype="object"
+                )
+            ),
             "out_of_scope_observed_zar": (
                 out_of_scope_observed if out_of_scope_observed is not None else nan
             ),

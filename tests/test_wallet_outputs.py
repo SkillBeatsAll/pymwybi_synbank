@@ -520,3 +520,154 @@ def test_worked_example_components_sum_to_the_published_estimate(worked_examples
                 if component["component_zar"] is not None and pd.notna(component["component_zar"])
             )
             assert product["estimate_zar"] >= total - 1.0, (example["entity_id"], product["product"])
+
+
+# ---------------------------------------------------------------------------
+# The analytical contract, against the real portfolio
+# ---------------------------------------------------------------------------
+
+
+@requires_full_data
+def test_the_contract_tables_are_written(wallet_run) -> None:
+    for name in ("opportunity_engine", "client_opportunity_profile"):
+        assert name in wallet_run["outputs"], name
+        assert Path(wallet_run["outputs"][name]).is_file()
+
+
+@requires_full_data
+def test_opportunity_engine_grain_and_schema(wallet) -> None:
+    from src.syn_wallet.wallet import contract
+
+    rows, clients, products = wallet.execute(
+        "SELECT COUNT(*), COUNT(DISTINCT entity_id), COUNT(DISTINCT product) "
+        "FROM opportunity_engine"
+    ).fetchone()
+    assert clients == EXPECTED_CLIENTS
+    assert products == len(assumptions.PRODUCTS)
+    assert rows == EXPECTED_CLIENTS * len(assumptions.PRODUCTS)
+
+    published = {
+        row[0]
+        for row in wallet.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'opportunity_engine'"
+        ).fetchall()
+    }
+    assert set(contract.OPPORTUNITY_ENGINE_COLUMNS) <= published
+
+
+@requires_full_data
+def test_investment_banking_carries_no_rand_figure_in_the_contract(wallet) -> None:
+    leaked = wallet.execute(
+        """
+        SELECT COUNT(*) FROM opportunity_engine
+        WHERE product = 'investment_banking'
+          AND (addressable_zar IS NOT NULL OR opportunity_zar IS NOT NULL
+               OR observed_zar IS NOT NULL)
+        """
+    ).fetchone()[0]
+    assert leaked == 0
+
+
+@requires_full_data
+def test_no_signal_pillar_publishes_a_share(wallet) -> None:
+    leaked = wallet.execute(
+        "SELECT COUNT(*) FROM opportunity_engine "
+        "WHERE pillar_role = 'opportunity_signal' AND share IS NOT NULL"
+    ).fetchone()[0]
+    assert leaked == 0
+
+
+@requires_full_data
+def test_the_cash_fee_wallet_is_null_across_the_whole_portfolio(wallet) -> None:
+    populated = wallet.execute(
+        "SELECT COUNT(*) FROM opportunity_engine WHERE cash_management_wallet_zar IS NOT NULL"
+    ).fetchone()[0]
+    assert populated == 0
+
+
+@requires_full_data
+def test_intensity_reproduces_from_two_published_columns(wallet) -> None:
+    mismatches = wallet.execute(
+        """
+        SELECT COUNT(*) FROM opportunity_engine
+        WHERE opportunity_zar IS NOT NULL AND addressable_cash_flow_zar > 0
+          AND ABS(opportunity_intensity
+                  - opportunity_zar / addressable_cash_flow_zar) > 1e-9
+        """
+    ).fetchone()[0]
+    assert mismatches == 0
+
+
+@requires_full_data
+def test_every_client_gets_exactly_one_profile(wallet) -> None:
+    rows, clients = wallet.execute(
+        "SELECT COUNT(*), COUNT(DISTINCT entity_id) FROM client_opportunity_profile"
+    ).fetchone()
+    assert rows == clients == EXPECTED_CLIENTS
+
+
+@requires_full_data
+def test_the_products_classify_as_expected_on_the_real_portfolio(wallet) -> None:
+    classes = dict(
+        wallet.execute(
+            "SELECT product, product_class FROM product_classification"
+        ).fetchall()
+    )
+    assert classes == {
+        "cash_management": "CORE",
+        "fx_global_markets": "CORE",
+        "trade_finance": "CORE",
+        "lending": "SUPPORTING",
+        "investment_banking": "SIGNAL_ONLY",
+    }
+
+
+@requires_full_data
+def test_no_client_benchmarks_against_itself_on_the_real_portfolio(wallet) -> None:
+    self_sampled = wallet.execute(
+        """
+        SELECT COUNT(*) FROM model_benchmarks
+        WHERE self_in_population
+           OR NOT leave_one_out
+           OR list_contains(str_split(replace(sample_entities, ' ', ''), ','), entity_id)
+        """
+    ).fetchone()[0]
+    assert self_sampled == 0
+
+
+@requires_full_data
+def test_no_sector_benchmark_is_built_from_fewer_than_three_peers(wallet) -> None:
+    from src.syn_wallet.wallet import benchmarks
+
+    thin = wallet.execute(
+        "SELECT COUNT(*) FROM model_benchmarks WHERE benchmark_level = 'sector' "
+        f"AND benchmark_n < {benchmarks.MIN_SECTOR_SAMPLE_FOR_BENCHMARK}"
+    ).fetchone()[0]
+    assert thin == 0
+
+
+@requires_full_data
+def test_every_benchmark_coefficient_records_its_population(wallet) -> None:
+    incomplete = wallet.execute(
+        """
+        SELECT COUNT(*) FROM model_benchmarks
+        WHERE fallback_reason IS NULL OR fallback_reason = ''
+           OR benchmark_level NOT IN ('sector', 'portfolio', 'unavailable')
+           OR benchmark_n IS NULL
+           OR (benchmark_level <> 'unavailable'
+               AND (benchmark_value IS NULL OR benchmark_median IS NULL
+                    OR benchmark_p75 IS NULL OR benchmark_max IS NULL))
+        """
+    ).fetchone()[0]
+    assert incomplete == 0
+
+
+@requires_full_data
+def test_product_confidence_is_published_for_every_product(wallet) -> None:
+    rows = wallet.execute(
+        "SELECT product, pct_high + pct_medium + pct_low FROM product_confidence"
+    ).fetchall()
+    assert len(rows) == len(assumptions.PRODUCTS)
+    for _, total in rows:
+        assert abs(total - 1.0) < 1e-9

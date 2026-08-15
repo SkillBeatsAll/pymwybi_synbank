@@ -46,3 +46,15 @@ notebooks/*-checkpoint.ipynb
 #   git lfs track "data/raw/transactional_banking.csv"
 # Do NOT silently .gitignore the raw data files — the team agreed all hackathon
 # data lives in this repo so Claude Code has full context.
+
+# --- Stage 5 (copilot) ---
+# The audit log holds real questions and generated answers; it is operational
+# data, not source. Secrets are never written to it, but it does not belong in
+# version control either.
+copilot_audit.jsonl
+
+# Playwright browser downloads and screenshots used while checking the dashboard.
+.playwright/
+
+# macOS AppleDouble sidecars, produced when data.tgz is extracted with python tarfile.
+._*

@@ -64,14 +64,15 @@ def _explain(row: pd.Series) -> str:
     if pd.notna(row["working_capital_component"]) and row["working_capital_component"] > 0:
         pieces.append(
             f"working-capital funding {common.zar(row['working_capital_component'])} "
-            f"(cycle {common.zar(row['working_capital_zar'])} at the portfolio's median "
-            f"debt-funded share of {row['wc_share']:.2f})"
+            f"(cycle {common.zar(row['working_capital_zar'])} at the median debt-funded share of "
+            f"{row['wc_share']:.2f} across {row['wc_benchmark_n']:,.0f} "
+            f"{row['wc_benchmark_level']} peers, this client excluded)"
         )
     if pd.notna(row["capex_component"]) and row["capex_component"] > 0:
         pieces.append(
             f"capex funding {common.zar(row['capex_component'])} "
             f"(capex {common.zar(row['capex_zar'])} at the judgement coefficient "
-            f"{assumptions.CAPEX_DEBT_FUNDED_SHARE:.2f})"
+            f"{row['capex_share']:.2f})"
         )
     body = " + ".join(pieces) if pieces else "no component estimable"
     sentence = (
@@ -102,10 +103,13 @@ def _explain(row: pd.Series) -> str:
     return sentence
 
 
-def build(frame: pd.DataFrame) -> common.PillarOutput:
+def build(
+    frame: pd.DataFrame, config: assumptions.ModelConfig | None = None
+) -> common.PillarOutput:
     """Estimate the financing opportunity for every client."""
     index = frame.index
     work = frame.copy()
+    config = config or assumptions.BASE_CONFIG
 
     debt_current = pd.to_numeric(work["debt_current_zar"], errors="coerce")
     undrawn = pd.to_numeric(work["undrawn_facilities_zar"], errors="coerce")
@@ -113,36 +117,32 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
     capex = pd.to_numeric(work["capex_zar"], errors="coerce")
     gross_debt = pd.to_numeric(work["gross_debt_zar"], errors="coerce")
 
-    # --- Working-capital funded share, measured from this portfolio -------
-    benchmark_set = benchmarks.BenchmarkSet()
-    wc_benchmark = benchmark_set.add(
-        benchmarks.measure_benchmark(
-            work,
-            WORKING_CAPITAL_BENCHMARK,
-            PRODUCT,
-            "debt_current_zar",
-            "working_capital_zar",
-            "The share of the working-capital cycle this portfolio funds with short-term debt "
-            "rather than equity, at the median rather than the upper quartile: this is a "
-            "structural funding norm, not a penetration frontier, so the typical case is the "
-            "right anchor.",
-            eligible=working_capital > 0,
-            percentile=0.5,
-        )
+    # --- Working-capital funded share, measured from this client's peers ---
+    # Held at the median whatever the run's benchmark percentile is: this is a
+    # structural funding norm, not a penetration frontier, so the typical case
+    # is the right anchor and an upper quartile would overstate it. The
+    # leave-one-out and sector rules still apply.
+    peers = benchmarks.PeerBenchmarks(work, config)
+    wc_share = peers.register(
+        WORKING_CAPITAL_BENCHMARK,
+        PRODUCT,
+        "debt_current_zar",
+        "working_capital_zar",
+        "The share of the working-capital cycle this client's peers fund with short-term debt "
+        "rather than equity, at the median rather than the upper quartile: this is a structural "
+        "funding norm, not a penetration frontier, so the typical case is the right anchor. The "
+        "client is excluded from the population that sets its own coefficient.",
+        eligible=working_capital > 0,
+        percentile=0.5,
     )
-    wc_share = wc_benchmark.value
 
     # Both coefficients are 1.0 on a structural basis: current debt is
     # contractually repayable inside the horizon, and undrawn committed
     # facilities are by definition unused capacity.
     refinancing_component = debt_current
     undrawn_component = undrawn
-    working_capital_component = (
-        working_capital.clip(lower=0.0) * wc_share
-        if wc_share is not None
-        else pd.Series(np.nan, index=index, dtype="float64")
-    )
-    capex_component = capex * assumptions.CAPEX_DEBT_FUNDED_SHARE
+    working_capital_component = working_capital.clip(lower=0.0) * wc_share
+    capex_component = capex * config.capex_debt_funded_share
 
     estimate = pd.concat(
         [
@@ -221,7 +221,10 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
             "working_capital_zar": working_capital,
             "capex_zar": capex,
             "gross_debt_zar": gross_debt,
-            "wc_share": wc_share if wc_share is not None else np.nan,
+            "wc_share": wc_share,
+            "wc_benchmark_level": peers.levels(WORKING_CAPITAL_BENCHMARK),
+            "wc_benchmark_n": peers.sample_sizes(WORKING_CAPITAL_BENCHMARK),
+            "capex_share": config.capex_debt_funded_share,
             "txn_memo_count_fy": memos,
             "named_lender_count": work["named_lender_count"],
         }
@@ -239,6 +242,9 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
         explanation,
         flags.series(),
         estimate_kind="opportunity_estimate",
+        benchmark_level=peers.levels(WORKING_CAPITAL_BENCHMARK),
+        benchmark_n=peers.sample_sizes(WORKING_CAPITAL_BENCHMARK).astype("Int64"),
+        benchmark_fallback_reason=peers.fallback_reasons(WORKING_CAPITAL_BENCHMARK),
     )
 
     components = common.component_rows(
@@ -267,5 +273,10 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
     flag_frame["product"] = PRODUCT
 
     return common.PillarOutput(
-        estimates, components, detail, flag_frame, benchmark_set.as_records()
+        estimates,
+        components,
+        detail,
+        flag_frame,
+        peers.coefficient_records(),
+        peers.metric_summary(),
     )

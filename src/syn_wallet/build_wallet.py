@@ -22,18 +22,35 @@ import duckdb
 import pandas as pd
 
 from . import config
-from .wallet import assumptions, confidence, engine
+from .wallet import assumptions, confidence, contract, engine, sensitivity
 
 WALLET_OUTPUTS = (
+    # The analytical contract. Downstream applications read these two and
+    # nothing else.
+    "opportunity_engine",
+    "client_opportunity_profile",
+    # Supporting detail, for the model report and for anyone auditing a number.
     "wallet_estimates",
     "opportunities",
     "wallet_components",
     "wallet_confidence_detail",
     "model_diagnostics",
     "portfolio_summary",
+    "product_classification",
+    "product_confidence",
     "model_assumptions",
     "model_benchmarks",
+    "model_benchmark_metrics",
     "model_sector_rules",
+)
+
+#: Written by ``--sensitivity``, which rebuilds the engine 36 times and takes
+#: several seconds, so it is off by default.
+SENSITIVITY_OUTPUTS = (
+    "model_sensitivity",
+    "model_sensitivity_summary",
+    "model_sensitivity_by_product",
+    "model_sensitivity_robustness",
 )
 
 MODEL_REPORT_NAME = "model_report.json"
@@ -77,12 +94,14 @@ def run(
     processed_dir: Path | None = None,
     output_dir: Path | None = None,
     overwrite: bool = False,
+    with_sensitivity: bool = False,
 ) -> dict[str, Any]:
     """Build every wallet output and return the run report."""
     processed_dir = (processed_dir or config.PROCESSED_DIR).resolve()
     output_dir = (output_dir or config.PROCESSED_DIR).resolve()
 
-    targets = [output_dir / f"{name}.parquet" for name in WALLET_OUTPUTS]
+    names = list(WALLET_OUTPUTS) + (list(SENSITIVITY_OUTPUTS) if with_sensitivity else [])
+    targets = [output_dir / f"{name}.parquet" for name in names]
     targets += [output_dir / MODEL_REPORT_NAME, output_dir / WORKED_EXAMPLES_NAME]
     existing = [path for path in targets if path.exists()]
     if existing and not overwrite:
@@ -94,16 +113,38 @@ def run(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     frames = {
+        "opportunity_engine": model.opportunity_engine,
+        "client_opportunity_profile": model.client_profiles,
         "wallet_estimates": model.estimates,
         "opportunities": model.opportunities,
         "wallet_components": model.components,
         "wallet_confidence_detail": model.confidence_detail,
         "model_diagnostics": model.diagnostics,
         "portfolio_summary": model.portfolio_summary,
+        "product_classification": model.product_classification,
+        "product_confidence": model.product_confidence,
         "model_assumptions": model.assumption_registry,
         "model_benchmarks": model.benchmarks,
+        "model_benchmark_metrics": model.benchmark_metrics,
         "model_sector_rules": model.sector_rules,
     }
+
+    sensitivity_report: dict[str, Any] = {}
+    if with_sensitivity:
+        result = sensitivity.run(features)
+        frames.update(
+            {
+                "model_sensitivity": result.detail,
+                "model_sensitivity_summary": result.summary,
+                "model_sensitivity_by_product": result.product_summary,
+                "model_sensitivity_robustness": result.robustness,
+            }
+        )
+        sensitivity_report = {
+            "scenarios": int(len(result.scenarios)),
+            "base_scenario": sensitivity.base_config().label,
+            "robustness": result.robustness.to_dict(orient="records"),
+        }
     connection = duckdb.connect(":memory:")
     written: dict[str, str] = {}
     try:
@@ -151,10 +192,30 @@ def run(
                 "Every estimate is a transparent arithmetic function of declared assumptions and "
                 "feature values, reproducible by hand from the component breakdown."
             ),
+            "no_self_benchmarking": (
+                "No client contributes to the peer population that sets its own coefficient. A "
+                "sector benchmark needs three peers after that exclusion, or the portfolio "
+                "benchmark is used and the reason is recorded per client."
+            ),
+            "flow_is_not_revenue": (
+                "addressable_cash_flow_zar is the client's own operating turnover. The fee wallet "
+                "on it, cash_management_wallet_zar, is NULL for every client because Syn Bank "
+                "discloses no pricing."
+            ),
         },
         "confidence_weights": confidence.WEIGHTS,
         "confidence_registry": confidence.weights_registry(),
         "worked_example_entities": list(EXAMPLE_ENTITIES),
+        "analytical_contract": {
+            "opportunity_engine_columns": list(contract.OPPORTUNITY_ENGINE_COLUMNS),
+            "grain": "one row per client x product",
+            "null_policy": (
+                "A product with no defensible rand denominator keeps NULL in every rand column. "
+                "Never zero: 'we cannot size this' and 'this is worth nothing' are opposite "
+                "statements."
+            ),
+        },
+        "sensitivity": sensitivity_report,
         "outputs": written,
         **model.report,
     }
@@ -169,9 +230,17 @@ def main() -> None:
     parser.add_argument("--processed-dir", type=Path, default=config.PROCESSED_DIR)
     parser.add_argument("--output-dir", type=Path, default=config.PROCESSED_DIR)
     parser.add_argument("--overwrite", action="store_true", help="Replace existing outputs.")
+    parser.add_argument(
+        "--sensitivity",
+        action="store_true",
+        help="Also run the 36-scenario sensitivity sweep (several seconds).",
+    )
     args = parser.parse_args()
     report = run(
-        processed_dir=args.processed_dir, output_dir=args.output_dir, overwrite=args.overwrite
+        processed_dir=args.processed_dir,
+        output_dir=args.output_dir,
+        overwrite=args.overwrite,
+        with_sensitivity=args.sensitivity,
     )
     print(
         f"wallet engine {report['methodology_version']}: "

@@ -10,15 +10,22 @@ well-penetrated peer achieves per rand of foreign revenue.
 Three components, split by direction so nothing is counted twice:
 
 ``export_settlement``
-    Foreign revenue exposure x the portfolio's upper-quartile inbound
-    cross-border intensity.
+    Foreign revenue exposure x the upper-quartile inbound cross-border intensity
+    of the client's **peers**.
 ``import_settlement``
-    Cost-of-sales exposure x the portfolio's upper-quartile outbound
-    cross-border intensity.
+    Cost-of-sales exposure x the upper-quartile outbound cross-border intensity
+    of the client's peers.
 ``hedging_execution``
     Disclosed FX forward notional, executed once. Corporates roll shorter-dated
     hedges several times a year, but no forward tenor is disclosed, so a single
     roll is a deliberate floor.
+
+**Peers, not the portfolio including the client.** Both intensities are resolved
+per client: the client is excluded from the population that sets its own
+coefficient, and a sector population is used where the sector has at least three
+other contributors. Vodacom's cross-border intensity no longer helps define the
+benchmark Vodacom is measured against, which is what made the v1.0.0 FX gap
+partly self-referential.
 
 **The SWIFT overlap.** ``txn_swift_channel_volume_zar`` is never added to the FX
 numerator. Those rows sit in the transactional ledger and conceptually overlap
@@ -48,15 +55,18 @@ def _explain(row: pd.Series) -> str:
         pieces.append(
             f"export settlement {common.zar(row['export_component'])} "
             f"(foreign revenue exposure {common.zar(row['foreign_revenue_basis_zar'])}, "
-            f"{row['foreign_revenue_source'].replace('_', ' ')}, at the portfolio upper-quartile "
-            f"inbound intensity of {row['export_intensity']:.3f})"
+            f"{row['foreign_revenue_source'].replace('_', ' ')}, at the upper-quartile inbound "
+            f"intensity of {row['export_intensity']:.3f} measured across "
+            f"{row['export_benchmark_n']:,.0f} {row['export_benchmark_level']} peers, this client "
+            f"excluded)"
         )
     if pd.notna(row["import_component"]):
         pieces.append(
             f"import settlement {common.zar(row['import_component'])} "
             f"(cost of sales {common.zar(row['cogs_basis_zar'])}, "
             f"{row['cogs_source'].replace('_', ' ')}, at outbound intensity "
-            f"{row['import_intensity']:.3f})"
+            f"{row['import_intensity']:.3f} across {row['import_benchmark_n']:,.0f} "
+            f"{row['import_benchmark_level']} peers, this client excluded)"
         )
     if pd.notna(row["hedging_component"]) and row["hedging_component"] > 0:
         pieces.append(
@@ -88,10 +98,13 @@ def _explain(row: pd.Series) -> str:
     return sentence
 
 
-def build(frame: pd.DataFrame) -> common.PillarOutput:
+def build(
+    frame: pd.DataFrame, config: assumptions.ModelConfig | None = None
+) -> common.PillarOutput:
     """Estimate the FX / global-markets wallet for every client."""
     index = frame.index
     work = frame.copy()
+    config = config or assumptions.BASE_CONFIG
 
     # --- Drivers ---------------------------------------------------------
     revenue = pd.to_numeric(work["revenue_total_zar"], errors="coerce")
@@ -115,51 +128,39 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
         allow_imputation=cogs_comparable,
     )
 
-    # --- Benchmarks, measured only where the exposure is disclosed --------
-    benchmark_set = benchmarks.BenchmarkSet()
-    export_benchmark = benchmark_set.add(
-        benchmarks.measure_benchmark(
-            work,
-            EXPORT_BENCHMARK,
-            PRODUCT,
-            "xb_inbound_volume_zar_fy",
-            "revenue_foreign_zar",
-            "Inbound cross-border volume per rand of disclosed foreign revenue. Converts an "
-            "exposure measure into a settlement-volume expectation without asserting that "
-            "foreign revenue itself crosses a border. Measured only on clients that disclose "
-            "foreign revenue, so an imputed exposure never sets the benchmark.",
-        )
+    # --- Benchmarks, per client, measured only where the exposure is disclosed
+    peers = benchmarks.PeerBenchmarks(work, config)
+    export_intensity = peers.register(
+        EXPORT_BENCHMARK,
+        PRODUCT,
+        "xb_inbound_volume_zar_fy",
+        "revenue_foreign_zar",
+        "Inbound cross-border volume per rand of disclosed foreign revenue. Converts an "
+        "exposure measure into a settlement-volume expectation without asserting that "
+        "foreign revenue itself crosses a border. Measured only on clients that disclose "
+        "foreign revenue, so an imputed exposure never sets the benchmark, and never on the "
+        "client being estimated.",
     )
-    import_benchmark = benchmark_set.add(
-        benchmarks.measure_benchmark(
-            work,
-            IMPORT_BENCHMARK,
-            PRODUCT,
-            "xb_outbound_volume_zar_fy",
-            "cost_of_sales_zar",
-            "Outbound cross-border volume per rand of disclosed cost of sales. Sized on the "
-            "procurement base because outbound cross-border payment is import settlement. "
-            "Measured only on clients disclosing cost of sales in a sector where cost of sales "
-            "is a procurement proxy.",
-            eligible=cogs_comparable,
-        )
+    import_intensity = peers.register(
+        IMPORT_BENCHMARK,
+        PRODUCT,
+        "xb_outbound_volume_zar_fy",
+        "cost_of_sales_zar",
+        "Outbound cross-border volume per rand of disclosed cost of sales. Sized on the "
+        "procurement base because outbound cross-border payment is import settlement. "
+        "Measured only on clients disclosing cost of sales in a sector where cost of sales "
+        "is a procurement proxy.",
+        eligible=cogs_comparable,
     )
 
-    export_intensity = export_benchmark.value
-    import_intensity = import_benchmark.value
-
-    export_component = (
-        foreign_revenue.value * export_intensity if export_intensity is not None else None
-    )
-    import_component = cogs.value * import_intensity if import_intensity is not None else None
+    export_component = foreign_revenue.value * export_intensity
+    import_component = cogs.value * import_intensity
     hedging_component = (
         pd.to_numeric(work["fx_forward_notional_zar"], errors="coerce")
         * assumptions.FX_FORWARD_ROLLS_PER_YEAR
     )
 
     nan_series = pd.Series(np.nan, index=index, dtype="float64")
-    export_component = export_component if export_component is not None else nan_series
-    import_component = import_component if import_component is not None else nan_series
 
     modelled_estimate = pd.concat(
         [export_component, import_component, hedging_component], axis=1
@@ -243,8 +244,12 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
             "foreign_revenue_source": foreign_revenue.source,
             "cogs_basis_zar": cogs.value,
             "cogs_source": cogs.source,
-            "export_intensity": export_intensity if export_intensity is not None else np.nan,
-            "import_intensity": import_intensity if import_intensity is not None else np.nan,
+            "export_intensity": export_intensity,
+            "import_intensity": import_intensity,
+            "export_benchmark_level": peers.levels(EXPORT_BENCHMARK),
+            "export_benchmark_n": peers.sample_sizes(EXPORT_BENCHMARK),
+            "import_benchmark_level": peers.levels(IMPORT_BENCHMARK),
+            "import_benchmark_n": peers.sample_sizes(IMPORT_BENCHMARK),
             "observed_zar": observed,
             "share": share_result.share,
             "fy_label": work["fy_label"],
@@ -270,6 +275,19 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
         estimate_kind="addressable_wallet",
         estimate_modelled=modelled_estimate,
         overlap_excluded=overlap_excluded,
+        benchmark_level=benchmarks.dominant_level(
+            [peers.levels(EXPORT_BENCHMARK), peers.levels(IMPORT_BENCHMARK)]
+        ),
+        benchmark_n=benchmarks.total_sample(
+            [peers.sample_sizes(EXPORT_BENCHMARK), peers.sample_sizes(IMPORT_BENCHMARK)],
+            [peers.levels(EXPORT_BENCHMARK), peers.levels(IMPORT_BENCHMARK)],
+        ),
+        benchmark_fallback_reason=(
+            "export: "
+            + peers.fallback_reasons(EXPORT_BENCHMARK)
+            + "; import: "
+            + peers.fallback_reasons(IMPORT_BENCHMARK)
+        ),
     )
 
     components = common.component_rows(
@@ -301,5 +319,10 @@ def build(frame: pd.DataFrame) -> common.PillarOutput:
     flag_frame["product"] = PRODUCT
 
     return common.PillarOutput(
-        estimates, components, detail, flag_frame, benchmark_set.as_records()
+        estimates,
+        components,
+        detail,
+        flag_frame,
+        peers.coefficient_records(),
+        peers.metric_summary(),
     )

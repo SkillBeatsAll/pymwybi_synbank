@@ -11,9 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
-from . import assumptions, common, confidence, diagnostics, opportunity
+from . import assumptions, common, confidence, contract, diagnostics, opportunity
 from .pillars import cash, fx, investment_banking, lending, trade
 
 #: Pillar builders in output order.
@@ -32,29 +33,63 @@ class WalletModel:
 
     estimates: pd.DataFrame
     opportunities: pd.DataFrame
+    opportunity_engine: pd.DataFrame
+    client_profiles: pd.DataFrame
     components: pd.DataFrame
     confidence_detail: pd.DataFrame
     flags: pd.DataFrame
     diagnostics: pd.DataFrame
     portfolio_summary: pd.DataFrame
+    product_classification: pd.DataFrame
+    product_confidence: pd.DataFrame
     benchmarks: pd.DataFrame
+    benchmark_metrics: pd.DataFrame
     assumption_registry: pd.DataFrame
     sector_rules: pd.DataFrame
+    config: assumptions.ModelConfig = assumptions.BASE_CONFIG
     report: dict[str, Any] = field(default_factory=dict)
 
 
-def run(features: pd.DataFrame) -> WalletModel:
+def _attach_client_scale(estimates: pd.DataFrame) -> pd.DataFrame:
+    """Broadcast addressable cash flow onto every product row.
+
+    The intensity denominator has to be *the published cash figure*, not a
+    second derivation of it. Reading it back off the cash rows guarantees the
+    two can never disagree, and makes the client-level scale available on the FX
+    and trade rows where the ratio is actually taken.
+
+    ``cash_management_wallet_zar`` is attached here as NULL for every row. It
+    exists so that the fee wallet is a named, visibly empty column rather than
+    an absence a reader can fill in with the flow figure by mistake.
+    """
+    result = estimates.copy()
+    cash_rows = result[result["product"] == assumptions.CASH]
+    scale = cash_rows.set_index("entity_id")["estimate_zar"]
+    result["addressable_cash_flow_zar"] = (
+        result["entity_id"].map(scale).astype("float64")
+    )
+    result["cash_management_wallet_zar"] = pd.Series(
+        np.nan, index=result.index, dtype="float64"
+    )
+    return result
+
+
+def run(
+    features: pd.DataFrame, config: assumptions.ModelConfig | None = None
+) -> WalletModel:
     """Estimate every pillar for every client and rank the resulting opportunities."""
     features = features.reset_index(drop=True)
+    config = config or assumptions.BASE_CONFIG
 
     estimate_frames: list[pd.DataFrame] = []
     component_frames: list[pd.DataFrame] = []
     confidence_frames: list[pd.DataFrame] = []
     flag_frames: list[pd.DataFrame] = []
     benchmark_records: list[dict[str, Any]] = []
+    metric_records: list[dict[str, Any]] = []
 
     for product, builder in PILLARS.items():
-        output = builder(features)
+        output = builder(features, config)
         if len(output.estimates) != len(features):
             raise AssertionError(
                 f"{product} produced {len(output.estimates)} rows for {len(features)} clients"
@@ -64,8 +99,10 @@ def run(features: pd.DataFrame) -> WalletModel:
         confidence_frames.append(output.confidence_detail)
         flag_frames.append(output.flags)
         benchmark_records.extend(output.benchmarks)
+        metric_records.extend(output.benchmark_metrics)
 
     estimates = pd.concat(estimate_frames, ignore_index=True)
+    estimates = _attach_client_scale(estimates)
     estimates = opportunity.score(estimates)
 
     components = pd.concat(component_frames, ignore_index=True)
@@ -75,21 +112,34 @@ def run(features: pd.DataFrame) -> WalletModel:
     findings = diagnostics.build(estimates, features)
     summary = opportunity.portfolio_summary(estimates)
     ranked = opportunity.ranked_view(estimates)
+    classification = opportunity.classify_products(estimates)
+    product_confidence = opportunity.product_confidence(estimates, findings)
+    engine_table = contract.build_opportunity_engine(estimates, findings)
+    profiles = contract.build_client_profiles(estimates, findings)
 
     benchmark_frame = pd.DataFrame(benchmark_records)
+    metric_frame = pd.DataFrame(metric_records)
     assumption_frame = pd.DataFrame(assumptions.registry())
     sector_frame = pd.DataFrame(assumptions.sector_rule_registry())
 
     report = {
         "methodology_version": assumptions.METHODOLOGY_VERSION,
+        "model_config": config.as_dict(),
         "clients": int(features["entity_id"].nunique()),
         "products": list(assumptions.PRODUCTS),
+        "wallet_pillars": list(assumptions.WALLET_PILLARS),
+        "signal_pillars": list(assumptions.SIGNAL_PILLARS),
+        "pillar_roles": dict(assumptions.PILLAR_ROLE),
+        "pillar_role_notes": dict(assumptions.PILLAR_ROLE_NOTES),
+        "terminology": dict(assumptions.TERMINOLOGY),
         "estimate_rows": int(len(estimates)),
         "estimate_basis_by_product": dict(assumptions.ESTIMATE_BASIS),
         "estimate_basis_notes": dict(assumptions.ESTIMATE_BASIS_NOTES),
         "confidence_weights": confidence.WEIGHTS,
         "opportunity_weights": assumptions.OPPORTUNITY_WEIGHTS,
-        "benchmarks": benchmark_records,
+        "benchmark_metrics": metric_records,
+        "product_classification": classification.to_dict(orient="records"),
+        "product_confidence": product_confidence.to_dict(orient="records"),
         "portfolio_summary": summary.to_dict(orient="records"),
         "diagnostics": diagnostics.summarise(findings, estimates),
     }
@@ -97,14 +147,20 @@ def run(features: pd.DataFrame) -> WalletModel:
     return WalletModel(
         estimates=estimates,
         opportunities=ranked,
+        opportunity_engine=engine_table,
+        client_profiles=profiles,
         components=components,
         confidence_detail=confidence_detail,
         flags=flags,
         diagnostics=findings,
         portfolio_summary=summary,
+        product_classification=classification,
+        product_confidence=product_confidence,
         benchmarks=benchmark_frame,
+        benchmark_metrics=metric_frame,
         assumption_registry=assumption_frame,
         sector_rules=sector_frame,
+        config=config,
         report=report,
     )
 

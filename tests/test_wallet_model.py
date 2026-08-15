@@ -58,6 +58,11 @@ def test_judgement_coefficients_are_few_and_named() -> None:
         "opportunity_weight_headroom",
         "confidence_band_high",
         "confidence_band_medium",
+        # Sample-size floors. Judgements about how thin a population may be
+        # before a coefficient stops being a benchmark, not coefficients that
+        # scale anybody's estimate.
+        "sector_benchmark_min_sample",
+        "benchmark_min_sample",
     }
 
 

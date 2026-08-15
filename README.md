@@ -12,11 +12,44 @@ python -m venv .venv
 tar -xzf data/data.tgz -C data/                               # restore raw inputs
 .venv/bin/python -m src.syn_wallet.clean_data --overwrite     # stage 1: cleaning
 .venv/bin/python -m src.syn_wallet.build_features --overwrite # stage 2: feature layer
-.venv/bin/python -m src.syn_wallet.build_wallet --overwrite   # stage 3: wallet engine
+.venv/bin/python -m src.syn_wallet.build_wallet --overwrite --sensitivity   # stage 3
+.venv/bin/python -m src.syn_wallet.build_intelligence --overwrite          # stage 4
 .venv/bin/python -m pytest                                    # full suite
 .venv/bin/python -m analysis.feature_layer_walkthrough        # tour of the feature layer
-.venv/bin/python -m analysis.wallet_model_report              # regenerate MODEL_REPORT.md
+.venv/bin/python -m analysis.wallet_model_report              # → MODEL_REPORT.md
+.venv/bin/python -m analysis.model_sensitivity_report         # → MODEL_SENSITIVITY.md
+.venv/bin/python -m analysis.model_final_report               # → MODEL_FINAL_REPORT.md
+.venv/bin/python -m analysis.commercial_intelligence_report   # → COMMERCIAL_INTELLIGENCE_REPORT.md
+
+# Stage 5, the copilot. Works without a key; set one for generated prose.
+cp .env.example .env && $EDITOR .env          # add DEEPSEEK_API_KEY (optional)
+.venv/bin/python -m src.syn_wallet.ask --list-models           # confirm the model name
+.venv/bin/python -m src.syn_wallet.build_copilot_demos --overwrite   # stored demo answers
+.venv/bin/python -m analysis.genai_prompts_report             # → GENAI_PROMPTS.md
+.venv/bin/python -m analysis.genai_design_report              # → GENAI_DESIGN.md
+.venv/bin/python -m analysis.adversarial_qa_report            # → ADVERSARIAL_QA_REPORT.md
+.venv/bin/python -m analysis.adversarial_qa_report --offline  #   ...without a key
+
+# Stage 6 — the dashboard.
+.venv/bin/python -m src.syn_wallet.serve                      # → http://127.0.0.1:8000
+
+# The submission notebook. Its first cell runs stages 1–4 if their outputs are missing,
+# so "Run All" on a clean clone is sufficient.
+.venv/bin/jupyter lab submission/SynBank_Share_of_Wallet_Analysis.ipynb
 ```
+
+## Submission deliverables
+
+| File | What it is |
+|---|---|
+| [`submission/SynBank_Share_of_Wallet_Analysis.ipynb`](submission/SynBank_Share_of_Wallet_Analysis.ipynb) | The reproducible notebook: ingestion → transformation → modelling → visualisation → GenAI, in 19 sections. Imports the production modules and reads the published Parquet; nothing is re-implemented or hand-typed. |
+| [`submission/METHODOLOGY.md`](submission/METHODOLOGY.md) | The formal technical and business methodology: assumptions, wallet-sizing logic, benchmarks, confidence, sensitivity, validation, GenAI architecture and limitations. |
+
+Both describe the same engine as `MODEL_FINAL_REPORT.md` and the dashboard. There is one
+methodology, one analytical contract, and one set of numbers.
+
+`--sensitivity` rebuilds the engine 36 times to price every arguable coefficient
+and takes a few seconds. Drop it for a fast rebuild of the model itself.
 
 `data/processed/` is gitignored: every artefact below is regenerated from
 `data/data.tgz` plus `data/finances/`, so a clean clone reproduces the whole
@@ -106,30 +139,82 @@ period-aligned against partial internal data.
 
 ## Stage 3 — wallet and opportunity engine (`src/syn_wallet/build_wallet.py`)
 
-Five product pillars, each with its own economic model, its own denominator and
-its own confidence. Full methodology, formulas, coefficients, diagnostics and
-three worked client examples are in **[MODEL_REPORT.md](MODEL_REPORT.md)**,
-which is generated from the outputs rather than hand-written.
+**Three Share of Wallet pillars and two opportunity signals.** Share of Wallet is
+a claim about a denominator — *of the activity this client must transact
+somewhere, what fraction runs through Syn Bank* — and only three pillars can
+support one. The other two publish opportunity, never share.
 
-| Pillar | Estimate | Denominator basis | Share? |
-|---|---|---|---|
-| Transactional / Cash Management | Collections + supplier payments the client must bank | `total_addressable_market` (accounting identity) | yes |
-| FX / Global Markets | Exposure × peer settlement intensity + disclosed hedging | `peer_benchmark_addressable` | yes |
-| Trade Finance | Import + export documentary + guarantees, sub-modelled | `peer_benchmark_addressable` | yes |
-| Lending | Refinancing + undrawn + working capital + capex funding | `financing_opportunity` | **no** — Syn Bank has no loan book |
-| Investment Banking | Ranked mandate-likelihood signal, no rand amount | `signal_only` | **no** |
+The final, stable analytical contract is **[MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md)**:
+methodology, terminology, every formula, the benchmark rules, both opportunity
+rankings, the published schema, and what a dashboard may and may not show.
+**[MODEL_SENSITIVITY.md](MODEL_SENSITIVITY.md)** prices every arguable
+coefficient across 36 model runs. **[MODEL_REPORT.md](MODEL_REPORT.md)** carries
+the per-client derivations and three worked examples. All three are generated
+from the outputs rather than hand-written.
+
+| # | Pillar | Role | Class | Estimate | Share? |
+|---|---|---|---|---|---|
+| 1 | Transactional / Cash Management | share of wallet | CORE | Addressable Cash Flow: revenue + cost of sales (accounting identity) | yes |
+| 2 | FX / Global Markets | share of wallet | CORE | Exposure × peer settlement intensity + disclosed hedging | yes |
+| 3 | Trade Finance | share of wallet | CORE | Import + export documentary + guarantees, sub-modelled | yes |
+| 4 | Lending | opportunity signal | SUPPORTING | Refinancing + undrawn + working capital + capex funding | **no** — Syn Bank has no loan book |
+| 5 | Investment Banking / Capital Markets | opportunity signal | SIGNAL_ONLY | Ranked mandate-likelihood signal, no rand amount | **no** |
+
+The CORE / SUPPORTING / SIGNAL_ONLY class is **assigned by measurement at build
+time**, not hardcoded, and published in `product_classification.parquet` so the
+application layer reads it from the data.
+
+### Addressable Cash Flow is not a wallet
+
+`addressable_cash_flow_zar` is the client's own operating turnover — money it
+must bank somewhere. `cash_management_wallet_zar`, the fee income a bank would
+earn on it, is **NULL for every client and never derived**: Syn Bank discloses no
+pricing, so any rand figure would rest on an invented basis-point assumption.
+Two columns, two names, so the flow figure cannot be read as bank revenue.
+
+### Peer benchmarks exclude the client they estimate
+
+Where no accounting identity fixes a coefficient it is measured from the
+client's peers at the 75th percentile — **with that client removed from the
+population**. Including it is circular in both directions: a heavily penetrated
+client raises the benchmark it is then measured against; a dormant one drags it
+down and makes its own share look healthy. A sector population is used wherever
+it reaches three peers after that exclusion, and the portfolio otherwise, with
+the reason recorded per client. `model_benchmarks.parquet` carries one row per
+client × metric with its level, sample size, median, P75, maximum and fallback
+reason.
+
+### Two opportunity rankings
+
+| Ranking | Question it answers | Construction |
+|---|---|---|
+| `commercial_opportunity_score` | Where is the largest commercially meaningful opportunity? | 0.45 × within-product gap percentile + 0.30 × confidence + 0.25 × headroom |
+| `opportunity_intensity` | Where is Syn Bank particularly under-penetrated relative to the client's scale? | `opportunity_zar / addressable_cash_flow_zar` — one ratio, no weights, no fitted coefficients |
+
+They disagree, and they are meant to. Show both; never average them.
 
 ### Outputs (`data/processed/`)
 
+**The analytical contract** — the only two tables the application layer reads:
+
 | File | Grain | Contents |
 |---|---|---|
-| `wallet_estimates.parquet` | 100 rows (20 × 5) | Observed, estimate, share, gap, confidence, opportunity score, ranks, flags, generated explanation |
+| `opportunity_engine.parquet` | 100 rows (20 × 5) | The canonical grain: observed, addressable, opportunity, share, both scores, both ranks, benchmark provenance, diagnostics, generated explanation |
+| `client_opportunity_profile.parquet` | 20 rows | Each pillar's headline side by side, plus top opportunity and recommended next product. **No column sums the pillars, and a build-time assertion prevents one appearing.** |
+
+Supporting detail:
+
+| File | Grain | Contents |
+|---|---|---|
+| `wallet_estimates.parquet` | 100 rows | The full internal estimate table the contract is projected from |
 | `opportunities.parquet` | 100 rows | The ranked banker-facing view, best first |
 | `wallet_components.parquet` | long | Per-component breakdown with the driver behind each and whether it was disclosed or imputed |
 | `model_diagnostics.parquet` | long | Model weaknesses at client, product and sector scope, with severity |
 | `portfolio_summary.parquet` | 5 rows | Product-level totals, shares and confidence distribution |
-| `model_assumptions.parquet` / `model_benchmarks.parquet` / `model_sector_rules.parquet` | — | Every coefficient with its basis and rationale; benchmarks re-measured each run |
+| `product_classification.parquet` / `product_confidence.parquet` | 5 rows each | The measured usability class, and mean/median confidence with HIGH/MEDIUM/LOW and major-flag percentages |
+| `model_assumptions.parquet` / `model_benchmarks.parquet` / `model_benchmark_metrics.parquet` / `model_sector_rules.parquet` | — | Every coefficient with its basis and rationale; peer coefficients re-measured per client each run |
 | `wallet_confidence_detail.parquet` | 100 rows | The five confidence factors per client × product |
+| `model_sensitivity*.parquet` (with `--sensitivity`) | 3,600 rows + summaries | Every client × product row under all 36 scenarios, plus per-scenario and per-product comparisons and the robustness verdicts |
 | `model_report.json` / `worked_examples.json` | — | Machine-readable run report and three full audit trails |
 
 ### The rules this stage holds to
@@ -148,16 +233,237 @@ which is generated from the outputs rather than hand-written.
 - **No absurd shares.** Where the modelled wallet falls below activity already
   flowing, it is floored at observed, flagged, and the unfloored value retained
   as `estimate_modelled_zar`.
+- **No self-benchmarking.** No client contributes to the peer population that
+  sets its own coefficient, and no sector benchmark is built from fewer than
+  three peers after that exclusion.
+- **No unpriced assumption.** Every arguable coefficient is swept across 36 model
+  runs, and each pillar carries a published robustness verdict.
 
-## Stage 4 — dashboard and GenAI layer (`dashboard/app.py`, `src/syn_wallet/extract_competitor_evidence.py`, `src/syn_wallet/generate_briefing_note.py`)
+### What the sensitivity sweep found
 
-Consumes `opportunities.parquet` directly — no transform layer between the wallet
-engine and the UI. Portfolio summary, client drill-down and an opportunity heatmap
-across all five pillars, plus a grounded briefing-note generator whose only source
-of fact is a whitelisted JSON slice of the computed tables (never free generation).
-Competitor-lender evidence is extracted from each client's AFS borrowings-note text
-via `prompts/competitor_evidence_prompt.md`, distinguishing a bank actually named as
-a lender from one named in some other capacity.
+| Pillar | Verdict | Opportunity range across all 36 scenarios |
+|---|---|---|
+| Cash Management | **ROBUST** — untouched by every scenario | R14.25tn, identical throughout |
+| Lending | **ROBUST** — rank ρ ≥ 0.997, under 5% drift | R1.32tn – R1.44tn (1.1×) |
+| Trade Finance | assumption-sensitive | R39.28bn – R157.64bn (4.0×) |
+| FX / Global Markets | assumption-sensitive | R78.37bn – R583.70bn (7.4×) |
+| Investment Banking | no rand magnitude; signal ordering identical throughout | — |
+
+Nine or ten of the base model's top ten opportunities survive every scenario.
+The FX and trade **rand totals** should be presented as ranked opportunities with
+a stated range, never as a single number — that is the honest consequence of
+having no disclosed total for either activity, so the denominator *is* the
+coefficient.
+
+## Stage 4 — commercial intelligence (`src/syn_wallet/build_intelligence.py`)
+
+The deterministic semantic layer. It answers the question a Corporate &
+Investment Banking relationship manager actually asks: *which client should I
+focus on, for which product, why, how strong is the evidence, and what should I
+investigate next?*
+
+**No LLM is called here.** Every sentence is a template filled from a published
+field, so identical inputs always produce identical words. Its only inputs are
+the analytical contract plus `model_sensitivity.parquet`; it recomputes nothing.
+
+Full detail in
+**[COMMERCIAL_INTELLIGENCE_REPORT.md](COMMERCIAL_INTELLIGENCE_REPORT.md)**,
+generated from the outputs.
+
+### Selecting the primary opportunity
+
+Not the biggest rand number. The five pillars produce rand on incomparable bases
+and their evidence quality differs by a factor of three, so selection discounts
+the model's commercial score by what is known about it:
+
+```
+selection_score = commercial_opportunity_score
+                × role_weight        CORE 1.00 / SUPPORTING 0.85 / SIGNAL_ONLY 0.55
+                × confidence_weight  HIGH 1.00 / MEDIUM 0.80 / LOW 0.55
+                × (1 − 0.20 if a HIGH-severity diagnostic is open)
+                × (1 − 0.10 if the estimate is benchmark-sensitive)
+```
+
+A LOW-confidence FX row scoring 0.75 lands at 0.41; a HIGH-confidence lending row
+scoring 0.60 lands at 0.51 and wins, whatever the rand amounts are. Each client
+gets a **primary**, a **secondary** and a **supporting signal**.
+
+### Opportunity status
+
+| Status | Banker action | Rule |
+|---|---|---|
+| `PRIORITY` | Recommend investigation | HIGH confidence, score ≥ 0.65, no HIGH-severity diagnostic |
+| `INVESTIGATE` | Consider investigation | Score ≥ 0.45 and not LOW confidence |
+| `MONITOR` | Monitor / validate before pursuing | Everything else, and every SIGNAL_ONLY row |
+| `NO_HEADROOM_DEMONSTRATED` | Retention conversation | Headroom under 5% of the addressable figure, or not sizeable |
+
+**A LOW-confidence opportunity can never reach PRIORITY.** The only route is a
+named entry in `PRIORITY_OVERRIDES` carrying a written reason — a decision a
+person signs. The shipped registry is empty, and tests assert both.
+
+### Outputs (`data/processed/`, Parquet + JSON)
+
+| File | Grain | Contents |
+|---|---|---|
+| `client_opportunity_intelligence.parquet` | 20 rows | The full client profile: every pillar side by side, three selected slots, confidence and sensitivity per pillar, one-sentence summary |
+| `portfolio_opportunity_intelligence.parquet` | long | Twelve sections of portfolio intelligence and dashboard-safe metrics |
+| `banker_questions.parquet` | 100 rows | Client-specific questions, each parameterised by that client's own figures |
+| `opportunity_explanations.parquet` | 100 rows | WHAT / WHY / EVIDENCE / CONFIDENCE / LIMITATION / NEXT ACTION per client × pillar |
+| `client_opportunity_cards.parquet` | 20 rows | The compact list view |
+| `opportunity_selection_detail.parquet` | 100 rows | Every selection factor, status and reason, so any decision can be re-derived |
+| `opportunity_sensitivity_summary.parquet` | 100 rows | Base, low, high, range, rank stability and flag per client × pillar |
+
+### Terminology, enforced in code
+
+Cash management gets **Addressable Cash Flow** and never "fee pool", "fee
+wallet", "bank revenue" or "revenue opportunity". FX and trade get
+**peer-benchmark addressable**. Lending gets **financing opportunity** and never
+share-of-wallet language. Investment banking gets **opportunity signal** and
+never a rand figure. A test checks every generated string against the forbidden
+list and fails the build.
+
+## Stage 5 — Client Opportunity Copilot (`src/syn_wallet/copilot/`)
+
+A generative layer built so the language model can only **write**, never
+calculate. Design in **[GENAI_DESIGN.md](GENAI_DESIGN.md)**; the actual prompts,
+generated from the module that sends them, in
+**[GENAI_PROMPTS.md](GENAI_PROMPTS.md)**.
+
+```
+question → router → retrieval → context → LLM → validation → audit → answer
+           ↑ deterministic ─────────────┘         └── checks ──┘
+```
+
+The path that does **not** exist is raw CSV → LLM → financial calculation. No
+module under `copilot/` can reach a raw dataset; retrieval reads seven stage 3–4
+tables and nothing else.
+
+| Stage | What it does |
+|---|---|
+| Router | Classifies one of 8 intents and resolves client / product / sector by keyword and entity matching. No LLM. |
+| Retrieval | Filters, ranks and caps rows in pandas. The ranking is the model's, never the LLM's. |
+| Context | Renders selected rows as labelled lines, pre-formatted, token-budgeted — and enumerates every figure into an allow-list. |
+| LLM | DeepSeek (`deepseek-chat`) or NVIDIA NIM, temperature 0.2, seed pinned. Writes prose over that context and nothing else. |
+| Validation | Rejects any answer containing a figure not in the allow-list, a banned phrase, a share attached to lending or IB, or a rand attached to IB. |
+| Audit | One JSONL line per answer: question, retrieved IDs, full context, model, prompt version, verdict, answer. Never a secret. |
+
+### Supported questions
+
+Client briefing · opportunity explanation · portfolio query · product query ·
+sensitivity question · meeting preparation · executive summary · methodology
+question.
+
+### Configuration
+
+Copy `.env.example` to `.env` and set one key. `.env` is gitignored; the example
+carries no real values, and a test asserts both that it names every variable the
+code reads and that it contains no key.
+
+| Variable | Purpose |
+|---|---|
+| `DEEPSEEK_API_KEY` | DeepSeek, the configured primary |
+| `NVIDIA_API_KEY` | NVIDIA NIM, the alternative |
+| `SYN_COPILOT_PROVIDER` | `deepseek` or `nvidia`. Unset = first one with a key |
+| `SYN_COPILOT_MODEL` | Override the model. Unset = the provider's default |
+| `SYN_COPILOT_BASE_URL` | Override the endpoint, for a proxy or self-host |
+
+Both providers speak the OpenAI chat-completions protocol, so one client class
+covers both. A value set in your shell beats the file, so a one-off override
+needs no edit.
+
+### It works with no API key
+
+Without a key the copilot serves stored demo answers where it has them and
+deterministic answers otherwise, labelled **Demo / AI unavailable**. The figures
+are identical either way — the language model was never the thing producing
+them. The same fallback catches a service error or a rejected answer, and says
+which happened.
+
+### The guard that matters
+
+An invented figure is *detected*, not merely discouraged. Every rand and
+percentage the model writes must appear in the context it was given; anything
+else means the model made it up — including a cross-pillar total, which by
+construction was never produced upstream. A failing answer is discarded, the
+banker gets the deterministic one, and the violation goes to the audit log.
+
+## Stage 6 — the dashboard (`src/syn_wallet/serve.py`)
+
+**Syn Bank Coverage Desk.** A five-page executive dashboard for CIB relationship
+managers, answering one question first: *where should a banker focus next?*
+
+### Start it
+
+```bash
+.venv/bin/python -m src.syn_wallet.serve            # http://127.0.0.1:8000
+.venv/bin/python -m src.syn_wallet.serve --port 9000
+.venv/bin/python -m src.syn_wallet.serve --demo     # never call the AI, even with a key
+```
+
+Everything loads into memory at startup, so pages render instantly. Requires
+stages 1–4 to have been built; `--sensitivity` on stage 3 is what fills the
+range marks and the model-trust page.
+
+| Page | What it answers |
+|---|---|
+| 1 · Portfolio | Three core Share of Wallet cards, two supporting signals, the focus list, and where the opportunity concentrates |
+| 2 · Heatmap | Every client × pillar, fill = opportunity score, **fill style = confidence**. Filter by sector, pillar, confidence, status |
+| 3 · Clients | Relationship snapshot, three share gauges, the opportunity table, the financial signals behind each estimate, why it is the focus, and the banker questions |
+| 4 · Model trust | Stable versus sensitive per pillar, the widest ranges in the book, the 36-run verdict, and how the benchmarks are built |
+| 5 · Products | One pillar at a time, with the observed detail that suits it — currency pairs and corridors for FX, instrument mix for trade, financing components for lending, signal categories for IB |
+
+The copilot is on every page: click **Ask the copilot** or press `/`.
+
+### Two visual devices carry the argument
+
+**The range mark.** Every figure that moves is drawn as a band from low to high
+with a dot at the base; a figure that does not move gets a lone dot and the
+label *does not move*. Cash management is a dot. FX and trade are wide bands.
+The model's central finding is visible before you read a word.
+
+**The pillar grammar.** A solid rule for CORE, a half rule for SUPPORTING, a
+dotted rule for SIGNAL_ONLY — repeated on every card, column header and table
+row, so "this is a different kind of number" is structural rather than a
+footnote.
+
+In the heatmap, colour carries **magnitude** and fill style carries
+**evidence**: a solid dark cell is a well-evidenced opportunity, a pale dashed
+outline is the same score on LOW confidence. They can never be mistaken for each
+other.
+
+### Architecture
+
+```
+opportunity_engine + commercial intelligence  →  service layer  →  JSON API  →  browser
+                                                 (projection only)
+```
+
+`src/syn_wallet/api/service.py` reads the published tables and **projects** them.
+It performs no financial arithmetic, and neither does the browser: every rand
+figure arrives pre-formatted, because the moment the front end derives a
+currency value it can disagree with the model. A build-time assertion runs over
+every payload and fails if any field equals a total across the five pillars.
+
+No build step, no CDN, no webfont — it runs with no network. FastAPI + vanilla
+JS + inline SVG.
+
+---
+
+Read [MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md) §12 before changing what the
+dashboard displays: it lists what may and may not go on a screen.
+
+## Also in this repo: the Streamlit dashboard (`dashboard/app.py`)
+
+A second, Streamlit-based dashboard alongside Stage 6's FastAPI one, styled with
+the neon theme. Consumes `opportunities.parquet` directly — no transform layer
+between the wallet engine and the UI. Portfolio summary, client drill-down and an
+opportunity heatmap across all five pillars, plus a grounded briefing-note
+generator (`src/syn_wallet/generate_briefing_note.py`) whose only source of fact
+is a whitelisted JSON slice of the computed tables (never free generation).
+Competitor-lender evidence is extracted from each client's AFS borrowings-note
+text via `prompts/competitor_evidence_prompt.md` and
+`src/syn_wallet/extract_competitor_evidence.py`, distinguishing a bank actually
+named as a lender from one named in some other capacity.
 
 ```bash
 .venv/bin/streamlit run dashboard/app.py
