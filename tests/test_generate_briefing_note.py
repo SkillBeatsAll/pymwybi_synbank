@@ -30,11 +30,15 @@ class FakeClient:
 def _wallet_results() -> pd.DataFrame:
     return pd.DataFrame(
         [
-            {"entity_id": "E08", "pillar": "fx", "addressable_p50": 1_000_000.0, "observed": 50_000.0,
-             "share_p50": 0.05, "unaddressed_p50": 950_000.0, "confidence": 0.8, "opportunity_score": 0.7, "rank": 3,
+            {"entity_id": "E08", "product": "fx_global_markets", "estimate_zar": 1_000_000.0,
+             "observed_zar": 50_000.0, "share": 0.05, "gap_zar": 950_000.0, "confidence": 0.8,
+             "confidence_band": "MEDIUM", "opportunity_score": 0.7, "rank_overall": 3,
+             "diagnostic_flags": "foreign_revenue_imputed", "explanation": "FX estimate from peer benchmark.",
              "internal_note_field_that_must_not_leak": "secret sauce"},
-            {"entity_id": "E08", "pillar": "lending_dcm", "addressable_p50": 2_000_000.0, "observed": None,
-             "share_p50": None, "unaddressed_p50": None, "confidence": 0.2, "opportunity_score": 0.4, "rank": 10,
+            {"entity_id": "E08", "product": "lending", "estimate_zar": 2_000_000.0,
+             "observed_zar": None, "share": None, "gap_zar": 2_000_000.0, "confidence": 0.2,
+             "confidence_band": "LOW", "opportunity_score": 0.4, "rank_overall": 10,
+             "diagnostic_flags": "", "explanation": "Financing opportunity, no observed loan book.",
              "internal_note_field_that_must_not_leak": "secret sauce"},
         ]
     )
@@ -51,14 +55,14 @@ def _competitor_evidence() -> pd.DataFrame:
 
 def test_context_only_whitelists_known_fields() -> None:
     context = build_grounding_context("E08", _wallet_results(), "Sanlam", "insurance", _competitor_evidence())
-    assert set(context["pillars"]["fx"].keys()) == set(PILLAR_FIELDS)
+    assert set(context["pillars"]["fx_global_markets"].keys()) == set(PILLAR_FIELDS)
     assert "internal_note_field_that_must_not_leak" not in json.dumps(context)
 
 
-def test_unobservable_pillar_is_null_not_zero() -> None:
+def test_lending_share_is_null_not_zero() -> None:
     context = build_grounding_context("E08", _wallet_results(), "Sanlam", "insurance", _competitor_evidence())
-    assert context["pillars"]["lending_dcm"]["share_p50"] is None
-    assert context["pillars"]["lending_dcm"]["observed"] is None
+    assert context["pillars"]["lending"]["share"] is None
+    assert context["pillars"]["lending"]["observed_zar"] is None
 
 
 def test_only_confirmed_lenders_pass_through() -> None:

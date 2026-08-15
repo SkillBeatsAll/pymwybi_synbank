@@ -19,7 +19,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PROMPT_PATH = REPO_ROOT / "prompts" / "briefing_note_prompt.md"
 MODEL = "claude-sonnet-5"
 
-PILLAR_FIELDS = ("addressable_p50", "observed", "share_p50", "unaddressed_p50", "confidence", "opportunity_score", "rank")
+PILLAR_FIELDS = (
+    "estimate_zar", "observed_zar", "share", "gap_zar", "confidence", "confidence_band",
+    "opportunity_score", "rank_overall", "diagnostic_flags", "explanation",
+)
 
 
 def load_system_prompt(prompt_path: Path = PROMPT_PATH) -> str:
@@ -54,7 +57,7 @@ def build_grounding_context(
     pillars: dict[str, dict] = {}
     client_rows = wallet_results[wallet_results["entity_id"] == entity_id]
     for _, row in client_rows.iterrows():
-        pillars[row["pillar"]] = {field: _clean(row.get(field)) for field in PILLAR_FIELDS}
+        pillars[row["product"]] = {field: _clean(row.get(field)) for field in PILLAR_FIELDS}
 
     confirmed_lenders: list[str] = []
     if competitor_evidence is not None and len(competitor_evidence):

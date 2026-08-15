@@ -40,12 +40,17 @@ Rules:
    read in 30 seconds before a call.
 2. Ground every specific number or name you write in the JSON context - do not round,
    invent, or estimate a figure that isn't there.
-3. A pillar with share = null is UNOBSERVABLE, not zero share. Say so plainly if you
-   mention it; never phrase it as "Syn Bank has no relationship" or "0% share."
+3. A pillar with share = null never claims a share by design (lending has no observed loan
+   book to divide by; investment banking produces no rand estimate at all, only a ranked
+   signal). Never phrase a null share as "Syn Bank has no relationship" or "0% share" -
+   describe what the pillar's numbers actually represent instead.
 4. Only name a competitor bank if it appears in confirmed_competitor_lenders. Never name a
    bank that isn't in that list, even as a guess.
 5. Lead with the single largest, highest-confidence opportunity in the context. Close with
-   one concrete, specific talking point a banker could open the call with.
+   one concrete, specific talking point a banker could open the call with. If a pillar's
+   explanation or diagnostic_flags mention a modelling caveat (e.g. a wallet floored at
+   observed activity, or an imputed driver), you may reflect that caveat but never restate
+   diagnostic_flags values verbatim as if they were client facts.
 6. Do not use hedging filler ("it seems", "it appears") - state what the data shows and
    flag uncertainty only via the confidence figures already in the context.
 7. Output plain text only - no markdown, no headers, no bullet points.
