@@ -12,6 +12,7 @@ streamlit>=1.38,<2.0
 plotly>=5.22,<6.0
 anthropic>=0.34,<1.0
 jupyter>=1.0,<2.0
+jupytext>=1.16,<2.0
 
 # Stage 5 (the copilot) only. OPTIONAL: the copilot detects its absence and
 # answers deterministically instead, and the whole test suite passes without it.

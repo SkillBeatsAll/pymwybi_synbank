@@ -55,6 +55,23 @@ and takes a few seconds. Drop it for a fast rebuild of the model itself.
 `data/data.tgz` plus `data/finances/`, so a clean clone reproduces the whole
 pipeline.
 
+### Reproducible notebook (`notebooks/wallet_twin.ipynb`)
+
+The required end-to-end notebook (ingest → transform → model → visualise) is
+generated, not hand-written, from `analysis/feature_layer_walkthrough.py` (Part
+A) and `analysis/wallet_model_walkthrough.py` (Part B) — both are `# %%`-cell
+scripts so they can also be run or edited as plain Python. To regenerate the
+`.ipynb` after either script changes:
+
+```bash
+.venv/bin/jupytext --to notebook --output /tmp/part_a.ipynb analysis/feature_layer_walkthrough.py
+.venv/bin/jupytext --to notebook --output /tmp/part_b.ipynb analysis/wallet_model_walkthrough.py
+# then concatenate part_a's and part_b's cells (see the git history of
+# notebooks/wallet_twin.ipynb for the exact merge script) and execute:
+PYTHONPATH="$(pwd)" .venv/bin/jupyter nbconvert --to notebook --execute \
+    --output notebooks/wallet_twin.ipynb --output-dir . /tmp/wallet_twin_merged.ipynb
+```
+
 ## Stage 1 — cleaning (`src/syn_wallet/clean_data.py`)
 
 The raw CSV files in `data/` are immutable inputs. The cleaning pipeline writes
