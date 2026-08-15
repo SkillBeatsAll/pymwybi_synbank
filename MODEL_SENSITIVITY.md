@@ -99,13 +99,13 @@ Rank volatility per client x product across the whole grid. A row whose rank is 
 | MTN Group | trade_finance | 18 | 60 | 42 |
 | Shoprite Holdings | fx_global_markets | 51 | 93 | 42 |
 | Aspen Pharmacare | fx_global_markets | 7 | 42 | 35 |
-| Prosus | fx_global_markets | 48 | 80 | 32 |
 | Naspers | fx_global_markets | 38 | 70 | 32 |
+| Prosus | fx_global_markets | 48 | 80 | 32 |
 | The Bidvest Group | fx_global_markets | 53 | 84 | 31 |
 | Shoprite Holdings | trade_finance | 58 | 88 | 30 |
 | Clicks Group | fx_global_markets | 59 | 88 | 29 |
-| Gold Fields | fx_global_markets | 43 | 71 | 28 |
 | Clicks Group | trade_finance | 43 | 71 | 28 |
+| Gold Fields | fx_global_markets | 43 | 71 | 28 |
 
 Of 100 client x product rows, **15 move by three places or fewer** across all 36 scenarios and **16 are in the top twenty in every single scenario**. The stability is not evenly spread: 14 of the 40 cash and lending rows sit inside a three-place band, against 16 FX and trade rows that swing by more than twenty places.
 

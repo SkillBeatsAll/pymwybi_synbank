@@ -13,11 +13,13 @@ tar -xzf data/data.tgz -C data/                               # restore raw inpu
 .venv/bin/python -m src.syn_wallet.clean_data --overwrite     # stage 1: cleaning
 .venv/bin/python -m src.syn_wallet.build_features --overwrite # stage 2: feature layer
 .venv/bin/python -m src.syn_wallet.build_wallet --overwrite --sensitivity   # stage 3
-.venv/bin/python -m pytest                                    # 219 tests
+.venv/bin/python -m src.syn_wallet.build_intelligence --overwrite          # stage 4
+.venv/bin/python -m pytest                                    # 277 tests
 .venv/bin/python -m analysis.feature_layer_walkthrough        # tour of the feature layer
 .venv/bin/python -m analysis.wallet_model_report              # → MODEL_REPORT.md
 .venv/bin/python -m analysis.model_sensitivity_report         # → MODEL_SENSITIVITY.md
 .venv/bin/python -m analysis.model_final_report               # → MODEL_FINAL_REPORT.md
+.venv/bin/python -m analysis.commercial_intelligence_report   # → COMMERCIAL_INTELLIGENCE_REPORT.md
 ```
 
 `--sensitivity` rebuilds the engine 36 times to price every arguable coefficient
@@ -227,8 +229,76 @@ a stated range, never as a single number — that is the honest consequence of
 having no disclosed total for either activity, so the denominator *is* the
 coefficient.
 
-Share of wallet is **not** yet a dashboard or a GenAI layer — those are the next
-stages, and both consume `opportunity_engine.parquet` and
-`client_opportunity_profile.parquet` directly. Read
-[MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md) §12 before building either: it
-lists what may and may not go on a screen.
+## Stage 4 — commercial intelligence (`src/syn_wallet/build_intelligence.py`)
+
+The deterministic semantic layer. It answers the question a Corporate &
+Investment Banking relationship manager actually asks: *which client should I
+focus on, for which product, why, how strong is the evidence, and what should I
+investigate next?*
+
+**No LLM is called here.** Every sentence is a template filled from a published
+field, so identical inputs always produce identical words. Its only inputs are
+the analytical contract plus `model_sensitivity.parquet`; it recomputes nothing.
+
+Full detail in
+**[COMMERCIAL_INTELLIGENCE_REPORT.md](COMMERCIAL_INTELLIGENCE_REPORT.md)**,
+generated from the outputs.
+
+### Selecting the primary opportunity
+
+Not the biggest rand number. The five pillars produce rand on incomparable bases
+and their evidence quality differs by a factor of three, so selection discounts
+the model's commercial score by what is known about it:
+
+```
+selection_score = commercial_opportunity_score
+                × role_weight        CORE 1.00 / SUPPORTING 0.85 / SIGNAL_ONLY 0.55
+                × confidence_weight  HIGH 1.00 / MEDIUM 0.80 / LOW 0.55
+                × (1 − 0.20 if a HIGH-severity diagnostic is open)
+                × (1 − 0.10 if the estimate is benchmark-sensitive)
+```
+
+A LOW-confidence FX row scoring 0.75 lands at 0.41; a HIGH-confidence lending row
+scoring 0.60 lands at 0.51 and wins, whatever the rand amounts are. Each client
+gets a **primary**, a **secondary** and a **supporting signal**.
+
+### Opportunity status
+
+| Status | Banker action | Rule |
+|---|---|---|
+| `PRIORITY` | Recommend investigation | HIGH confidence, score ≥ 0.65, no HIGH-severity diagnostic |
+| `INVESTIGATE` | Consider investigation | Score ≥ 0.45 and not LOW confidence |
+| `MONITOR` | Monitor / validate before pursuing | Everything else, and every SIGNAL_ONLY row |
+| `NO_HEADROOM_DEMONSTRATED` | Retention conversation | Headroom under 5% of the addressable figure, or not sizeable |
+
+**A LOW-confidence opportunity can never reach PRIORITY.** The only route is a
+named entry in `PRIORITY_OVERRIDES` carrying a written reason — a decision a
+person signs. The shipped registry is empty, and tests assert both.
+
+### Outputs (`data/processed/`, Parquet + JSON)
+
+| File | Grain | Contents |
+|---|---|---|
+| `client_opportunity_intelligence.parquet` | 20 rows | The full client profile: every pillar side by side, three selected slots, confidence and sensitivity per pillar, one-sentence summary |
+| `portfolio_opportunity_intelligence.parquet` | long | Twelve sections of portfolio intelligence and dashboard-safe metrics |
+| `banker_questions.parquet` | 100 rows | Client-specific questions, each parameterised by that client's own figures |
+| `opportunity_explanations.parquet` | 100 rows | WHAT / WHY / EVIDENCE / CONFIDENCE / LIMITATION / NEXT ACTION per client × pillar |
+| `client_opportunity_cards.parquet` | 20 rows | The compact list view |
+| `opportunity_selection_detail.parquet` | 100 rows | Every selection factor, status and reason, so any decision can be re-derived |
+| `opportunity_sensitivity_summary.parquet` | 100 rows | Base, low, high, range, rank stability and flag per client × pillar |
+
+### Terminology, enforced in code
+
+Cash management gets **Addressable Cash Flow** and never "fee pool", "fee
+wallet", "bank revenue" or "revenue opportunity". FX and trade get
+**peer-benchmark addressable**. Lending gets **financing opportunity** and never
+share-of-wallet language. Investment banking gets **opportunity signal** and
+never a rand figure. A test checks every generated string against the forbidden
+list and fails the build.
+
+---
+
+There is still **no dashboard and no GenAI layer** — those are the next stages.
+Both should read the stage 4 tables, and both should first read
+[MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md) §12, which lists what may and may
+not go on a screen.
