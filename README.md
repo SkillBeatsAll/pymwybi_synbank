@@ -14,13 +14,39 @@ tar -xzf data/data.tgz -C data/                               # restore raw inpu
 .venv/bin/python -m src.syn_wallet.build_features --overwrite # stage 2: feature layer
 .venv/bin/python -m src.syn_wallet.build_wallet --overwrite --sensitivity   # stage 3
 .venv/bin/python -m src.syn_wallet.build_intelligence --overwrite          # stage 4
-.venv/bin/python -m pytest                                    # 277 tests
+.venv/bin/python -m pytest                                    # 523 tests
 .venv/bin/python -m analysis.feature_layer_walkthrough        # tour of the feature layer
 .venv/bin/python -m analysis.wallet_model_report              # → MODEL_REPORT.md
 .venv/bin/python -m analysis.model_sensitivity_report         # → MODEL_SENSITIVITY.md
 .venv/bin/python -m analysis.model_final_report               # → MODEL_FINAL_REPORT.md
 .venv/bin/python -m analysis.commercial_intelligence_report   # → COMMERCIAL_INTELLIGENCE_REPORT.md
+
+# Stage 5, the copilot. Works without a key; set one for generated prose.
+cp .env.example .env && $EDITOR .env          # add DEEPSEEK_API_KEY (optional)
+.venv/bin/python -m src.syn_wallet.ask --list-models           # confirm the model name
+.venv/bin/python -m src.syn_wallet.build_copilot_demos --overwrite   # stored demo answers
+.venv/bin/python -m analysis.genai_prompts_report             # → GENAI_PROMPTS.md
+.venv/bin/python -m analysis.genai_design_report              # → GENAI_DESIGN.md
+.venv/bin/python -m analysis.adversarial_qa_report            # → ADVERSARIAL_QA_REPORT.md
+.venv/bin/python -m analysis.adversarial_qa_report --offline  #   ...without a key
+
+# Stage 6 — the dashboard.
+.venv/bin/python -m src.syn_wallet.serve                      # → http://127.0.0.1:8000
+
+# The submission notebook. Its first cell runs stages 1–4 if their outputs are missing,
+# so "Run All" on a clean clone is sufficient.
+.venv/bin/jupyter lab submission/SynBank_Share_of_Wallet_Analysis.ipynb
 ```
+
+## Submission deliverables
+
+| File | What it is |
+|---|---|
+| [`submission/SynBank_Share_of_Wallet_Analysis.ipynb`](submission/SynBank_Share_of_Wallet_Analysis.ipynb) | The reproducible notebook: ingestion → transformation → modelling → visualisation → GenAI, in 19 sections. Imports the production modules and reads the published Parquet; nothing is re-implemented or hand-typed. |
+| [`submission/METHODOLOGY.md`](submission/METHODOLOGY.md) | The formal technical and business methodology: assumptions, wallet-sizing logic, benchmarks, confidence, sensitivity, validation, GenAI architecture and limitations. |
+
+Both describe the same engine as `MODEL_FINAL_REPORT.md` and the dashboard. There is one
+methodology, one analytical contract, and one set of numbers.
 
 `--sensitivity` rebuilds the engine 36 times to price every arguable coefficient
 and takes a few seconds. Drop it for a fast rebuild of the model itself.
@@ -296,9 +322,132 @@ share-of-wallet language. Investment banking gets **opportunity signal** and
 never a rand figure. A test checks every generated string against the forbidden
 list and fails the build.
 
+## Stage 5 — Client Opportunity Copilot (`src/syn_wallet/copilot/`)
+
+A generative layer built so the language model can only **write**, never
+calculate. Design in **[GENAI_DESIGN.md](GENAI_DESIGN.md)**; the actual prompts,
+generated from the module that sends them, in
+**[GENAI_PROMPTS.md](GENAI_PROMPTS.md)**.
+
+```
+question → router → retrieval → context → LLM → validation → audit → answer
+           ↑ deterministic ─────────────┘         └── checks ──┘
+```
+
+The path that does **not** exist is raw CSV → LLM → financial calculation. No
+module under `copilot/` can reach a raw dataset; retrieval reads seven stage 3–4
+tables and nothing else.
+
+| Stage | What it does |
+|---|---|
+| Router | Classifies one of 8 intents and resolves client / product / sector by keyword and entity matching. No LLM. |
+| Retrieval | Filters, ranks and caps rows in pandas. The ranking is the model's, never the LLM's. |
+| Context | Renders selected rows as labelled lines, pre-formatted, token-budgeted — and enumerates every figure into an allow-list. |
+| LLM | DeepSeek (`deepseek-chat`) or NVIDIA NIM, temperature 0.2, seed pinned. Writes prose over that context and nothing else. |
+| Validation | Rejects any answer containing a figure not in the allow-list, a banned phrase, a share attached to lending or IB, or a rand attached to IB. |
+| Audit | One JSONL line per answer: question, retrieved IDs, full context, model, prompt version, verdict, answer. Never a secret. |
+
+### Supported questions
+
+Client briefing · opportunity explanation · portfolio query · product query ·
+sensitivity question · meeting preparation · executive summary · methodology
+question.
+
+### Configuration
+
+Copy `.env.example` to `.env` and set one key. `.env` is gitignored; the example
+carries no real values, and a test asserts both that it names every variable the
+code reads and that it contains no key.
+
+| Variable | Purpose |
+|---|---|
+| `DEEPSEEK_API_KEY` | DeepSeek, the configured primary |
+| `NVIDIA_API_KEY` | NVIDIA NIM, the alternative |
+| `SYN_COPILOT_PROVIDER` | `deepseek` or `nvidia`. Unset = first one with a key |
+| `SYN_COPILOT_MODEL` | Override the model. Unset = the provider's default |
+| `SYN_COPILOT_BASE_URL` | Override the endpoint, for a proxy or self-host |
+
+Both providers speak the OpenAI chat-completions protocol, so one client class
+covers both. A value set in your shell beats the file, so a one-off override
+needs no edit.
+
+### It works with no API key
+
+Without a key the copilot serves stored demo answers where it has them and
+deterministic answers otherwise, labelled **Demo / AI unavailable**. The figures
+are identical either way — the language model was never the thing producing
+them. The same fallback catches a service error or a rejected answer, and says
+which happened.
+
+### The guard that matters
+
+An invented figure is *detected*, not merely discouraged. Every rand and
+percentage the model writes must appear in the context it was given; anything
+else means the model made it up — including a cross-pillar total, which by
+construction was never produced upstream. A failing answer is discarded, the
+banker gets the deterministic one, and the violation goes to the audit log.
+
+## Stage 6 — the dashboard (`src/syn_wallet/serve.py`)
+
+**Syn Bank Coverage Desk.** A five-page executive dashboard for CIB relationship
+managers, answering one question first: *where should a banker focus next?*
+
+### Start it
+
+```bash
+.venv/bin/python -m src.syn_wallet.serve            # http://127.0.0.1:8000
+.venv/bin/python -m src.syn_wallet.serve --port 9000
+.venv/bin/python -m src.syn_wallet.serve --demo     # never call the AI, even with a key
+```
+
+Everything loads into memory at startup, so pages render instantly. Requires
+stages 1–4 to have been built; `--sensitivity` on stage 3 is what fills the
+range marks and the model-trust page.
+
+| Page | What it answers |
+|---|---|
+| 1 · Portfolio | Three core Share of Wallet cards, two supporting signals, the focus list, and where the opportunity concentrates |
+| 2 · Heatmap | Every client × pillar, fill = opportunity score, **fill style = confidence**. Filter by sector, pillar, confidence, status |
+| 3 · Clients | Relationship snapshot, three share gauges, the opportunity table, the financial signals behind each estimate, why it is the focus, and the banker questions |
+| 4 · Model trust | Stable versus sensitive per pillar, the widest ranges in the book, the 36-run verdict, and how the benchmarks are built |
+| 5 · Products | One pillar at a time, with the observed detail that suits it — currency pairs and corridors for FX, instrument mix for trade, financing components for lending, signal categories for IB |
+
+The copilot is on every page: click **Ask the copilot** or press `/`.
+
+### Two visual devices carry the argument
+
+**The range mark.** Every figure that moves is drawn as a band from low to high
+with a dot at the base; a figure that does not move gets a lone dot and the
+label *does not move*. Cash management is a dot. FX and trade are wide bands.
+The model's central finding is visible before you read a word.
+
+**The pillar grammar.** A solid rule for CORE, a half rule for SUPPORTING, a
+dotted rule for SIGNAL_ONLY — repeated on every card, column header and table
+row, so "this is a different kind of number" is structural rather than a
+footnote.
+
+In the heatmap, colour carries **magnitude** and fill style carries
+**evidence**: a solid dark cell is a well-evidenced opportunity, a pale dashed
+outline is the same score on LOW confidence. They can never be mistaken for each
+other.
+
+### Architecture
+
+```
+opportunity_engine + commercial intelligence  →  service layer  →  JSON API  →  browser
+                                                 (projection only)
+```
+
+`src/syn_wallet/api/service.py` reads the published tables and **projects** them.
+It performs no financial arithmetic, and neither does the browser: every rand
+figure arrives pre-formatted, because the moment the front end derives a
+currency value it can disagree with the model. A build-time assertion runs over
+every payload and fails if any field equals a total across the five pillars.
+
+No build step, no CDN, no webfont — it runs with no network. FastAPI + vanilla
+JS + inline SVG.
+
 ---
 
-There is still **no dashboard and no GenAI layer** — those are the next stages.
-Both should read the stage 4 tables, and both should first read
-[MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md) §12, which lists what may and may
-not go on a screen.
+Read [MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md) §12 before changing what the
+dashboard displays: it lists what may and may not go on a screen.
