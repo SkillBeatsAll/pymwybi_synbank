@@ -198,7 +198,7 @@ def inject_style() -> None:
             background: linear-gradient(90deg, var(--aqua), var(--violet), var(--magenta), var(--pink));
             background-size: 300% 100%;
             box-shadow: 0 0 18px rgba(24,216,255,0.7);
-            animation: gradientShift 5s ease infinite;
+            animation: gradientShift 5s ease infinite, pulseGlow 2.4s ease-in-out infinite;
         }
 
         h2, h3 { color: var(--ink) !important; letter-spacing: -0.01em; }
@@ -320,9 +320,15 @@ def inject_style() -> None:
             color: #ffd6fb !important;
         }
 
+        @media (max-width: 1200px) {
+            [data-testid="stMetricValue"] { font-size: 1.35rem !important; }
+            [data-testid="stMetric"] { padding: 12px 14px 8px 14px; }
+        }
         @media (max-width: 700px) {
             h1 { font-size: 1.7rem !important; }
             [data-testid="stMetric"] { padding: 10px 12px; }
+            [data-testid="stMetricValue"] { font-size: 1.15rem !important; }
+            [data-testid="stMetricLabel"] { font-size: 0.7rem !important; }
         }
         </style>
         """,
