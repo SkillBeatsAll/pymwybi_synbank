@@ -1,4 +1,4 @@
-"""Generate ``GENAI_PROMPTS.md`` from :mod:`src.syn_wallet.copilot.prompts`.
+"""Generate ``docs/GENAI_PROMPTS.md`` from :mod:`src.syn_wallet.copilot.prompts`.
 
     .venv/bin/python -m analysis.genai_prompts_report
 
@@ -16,7 +16,7 @@ from src.syn_wallet.copilot.retrieval import METHODOLOGY_BY_INTENT, METHODOLOGY_
 
 from .report_common import write
 
-REPORT_PATH = paths.REPOSITORY_ROOT / "GENAI_PROMPTS.md"
+REPORT_PATH = paths.REPOSITORY_ROOT / "docs" / "GENAI_PROMPTS.md"
 
 #: A worked example question per intent, so a reader can see which instruction
 #: fires for which kind of question.
@@ -123,7 +123,7 @@ def build_report() -> str:
     add("## 6. Per-intent instructions\n")
     add(
         "The router picks exactly one of these, deterministically, before the model is called. "
-        "See `GENAI_DESIGN.md` §3 for the routing rules.\n"
+        "See `docs/GENAI_DESIGN.md` §3 for the routing rules.\n"
     )
     for intent in router.INTENTS:
         instruction = prompts.INSTRUCTIONS[intent]
@@ -136,7 +136,7 @@ def build_report() -> str:
     add("## 7. Methodology notes available to the context\n")
     add(
         "These are the only pieces of prose the retriever holds. They describe how the model "
-        "works, and each is a restatement of something `MODEL_FINAL_REPORT.md` already says. "
+        "works, and each is a restatement of something `docs/MODEL_FINAL_REPORT.md` already says. "
         "They are selected by intent so the context does not spend a third of its budget on "
         "background the answer will not use.\n"
     )

@@ -499,15 +499,23 @@ async function renderHeatmap(root) {
       el("div", null,
         el("h2", null, "Opportunity heatmap"),
         el("div", { class: "sub" }, `${clients.length} clients × ${products.length} pillars — fill is the commercial opportunity score, fill style is confidence`)),
+      /* The legend states both channels separately, because that separation is
+       * the point: hue is magnitude, fill style is evidence. Showing them in one
+       * row of mixed swatches would imply they combine into a single scale. */
       el("div", { class: "legend" },
-        el("span", null, "Score ",
+        el("span", null, "Score low→high ",
           el("span", { class: "swatches" },
             el("i", { style: "background:var(--seq-200)" }),
             el("i", { style: "background:var(--seq-300)" }),
             el("i", { style: "background:var(--seq-400)" }),
             el("i", { style: "background:var(--seq-500)" }),
             el("i", { style: "background:var(--seq-600)" }))),
-        el("span", null, "● ● ● high  ·  ● ● medium  ·  ● low"),
+        el("span", null, "Evidence ",
+          el("span", { class: "swatches" },
+            el("i", { style: "background:var(--seq-500)", title: "High confidence: solid fill" }),
+            el("i", { style: "background:var(--accent-wash);border:1px solid var(--accent-line)", title: "Medium confidence: tint with a ring" }),
+            el("i", { style: "background:var(--surface);border:1px dashed var(--rule-strong)", title: "Low confidence: dashed outline" })),
+          " solid / tint / outline"),
         el("span", null, "~ benchmark-sensitive  ·  ! review flag"))),
     el("div", { class: "card-body" },
       clients.length
@@ -588,8 +596,12 @@ async function renderClient(root, entityId) {
   document.getElementById("page-lede").textContent =
     `${(data.sector || "").replace(/_/g, " ")} · fiscal year ${data.fy_label} · ends ${data.fiscal_year_end}`;
 
-  root.append(el("div", { class: "crumb", style: "margin-bottom:10px" },
-    el("button", { onclick: () => go("clients") }, "Client book"), "›", data.entity_name));
+  /* The separator is its own element so the flex gap applies to it — a bare
+   * text node is not a flex item and renders hard against the name. */
+  root.append(el("div", { class: "crumb", style: "margin-bottom:12px" },
+    el("button", { onclick: () => go("clients") }, "Client book"),
+    el("span", { "aria-hidden": "true" }, "›"),
+    el("span", null, data.entity_name)));
 
   const headline = el("div", { style: "display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center" },
     el("div", { style: "display:flex;gap:9px;align-items:center;flex-wrap:wrap" },
@@ -1166,13 +1178,33 @@ async function rerender() {
 
 /* ----------------------------------------------------------------- boot */
 
+/* Sticky table headers park themselves directly under the topbar, so they need
+ * its height as a number. The topbar grows when a client name or a page lede
+ * wraps, so the height is measured rather than assumed — a stale offset hides
+ * the header behind the topbar with no visible symptom except a missing row of
+ * column names. */
+function trackTopbarHeight() {
+  const topbar = document.querySelector(".topbar");
+  if (!topbar) return;
+  const apply = () =>
+    document.documentElement.style.setProperty(
+      "--topbar-h", `${Math.round(topbar.getBoundingClientRect().height)}px`);
+  apply();
+  if (window.ResizeObserver) new ResizeObserver(apply).observe(topbar);
+  else window.addEventListener("resize", apply);
+}
+
 async function boot() {
+  trackTopbarHeight();
   const rail = document.getElementById("rail-nav");
-  PAGES.forEach((page, index) => {
+  /* Unnumbered. These five are views of one book, not steps in a sequence, and
+   * an ordinal here would claim an order the work does not have. Active state
+   * is the accent bar on the leading edge. */
+  for (const page of PAGES) {
     rail.append(el("a", {
       class: "rail-link", href: `#${page.id}`, "data-page": page.id,
-    }, el("span", { class: "idx" }, String(index + 1).padStart(2, "0")), page.label));
-  });
+    }, page.label));
+  }
 
   try {
     state.health = await api("/api/health");
@@ -1184,6 +1216,20 @@ async function boot() {
   } catch (error) {
     document.getElementById("rail-foot").textContent = "Offline";
   }
+
+  /* Below 900px the rail is off-canvas. Picking a section closes it again —
+   * leaving it open over the page the reader just asked for is the classic
+   * off-canvas mistake. */
+  const railPanel = document.getElementById("rail");
+  const railToggle = document.getElementById("rail-toggle");
+  const setRail = (open) => {
+    railPanel.classList.toggle("open", open);
+    railToggle.setAttribute("aria-expanded", String(open));
+  };
+  railToggle.addEventListener("click", () => setRail(!railPanel.classList.contains("open")));
+  railPanel.addEventListener("click", (event) => {
+    if (event.target.closest(".rail-link")) setRail(false);
+  });
 
   document.getElementById("copilot-toggle").addEventListener("click", () => openCopilot());
   document.getElementById("copilot-close").addEventListener("click", closeCopilot);
@@ -1197,6 +1243,7 @@ async function boot() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.copilotOpen) closeCopilot();
+    if (event.key === "Escape" && railPanel.classList.contains("open")) setRail(false);
     if (event.key === "/" && !/(INPUT|TEXTAREA|SELECT)/.test(document.activeElement.tagName)) {
       event.preventDefault();
       openCopilot();

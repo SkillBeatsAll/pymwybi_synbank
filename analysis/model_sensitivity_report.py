@@ -1,4 +1,4 @@
-"""Generate ``MODEL_SENSITIVITY.md`` from the sensitivity sweep's own outputs.
+"""Generate ``docs/MODEL_SENSITIVITY.md`` from the sensitivity sweep's own outputs.
 
     .venv/bin/python -m src.syn_wallet.build_wallet --overwrite --sensitivity
     .venv/bin/python -m analysis.model_sensitivity_report
@@ -13,7 +13,7 @@ from src.syn_wallet.wallet import assumptions, sensitivity
 
 from .report_common import connect, table, write
 
-REPORT_PATH = config.REPOSITORY_ROOT / "MODEL_SENSITIVITY.md"
+REPORT_PATH = config.REPOSITORY_ROOT / "docs" / "MODEL_SENSITIVITY.md"
 
 TABLES = (
     "model_sensitivity",

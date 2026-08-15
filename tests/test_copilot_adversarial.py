@@ -14,7 +14,7 @@ system would catch the lie, rather than proving it got lucky once.
 
 The live-model half of this suite is ``analysis/adversarial_qa_report.py``,
 which asks a real DeepSeek endpoint the same questions and writes
-``ADVERSARIAL_QA_REPORT.md``. It needs a key, so it is not a test.
+``docs/ADVERSARIAL_QA_REPORT.md``. It needs a key, so it is not a test.
 """
 
 from __future__ import annotations

@@ -342,7 +342,7 @@ STATIC_ASSUMPTIONS: tuple[Assumption, ...] = (
         "Portfolio benchmarks are set at the 75th percentile of observed intensity, not the "
         "maximum. The maximum would let a single outlier define every client's wallet; the "
         "median would define the wallet as average performance and understate the opportunity. "
-        "The upper quartile is 'what a well-penetrated peer achieves'. MODEL_SENSITIVITY.md "
+        "The upper quartile is 'what a well-penetrated peer achieves'. docs/MODEL_SENSITIVITY.md "
         "measures what the median and the 80th percentile would do instead.",
     ),
     Assumption(

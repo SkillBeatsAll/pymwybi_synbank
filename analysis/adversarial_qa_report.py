@@ -1,4 +1,4 @@
-"""Run the adversarial trap catalogue and write ``ADVERSARIAL_QA_REPORT.md``.
+"""Run the adversarial trap catalogue and write ``docs/ADVERSARIAL_QA_REPORT.md``.
 
 ::
 
@@ -43,7 +43,7 @@ from src.syn_wallet.copilot.engine import Copilot
 from .adversarial_suite import TRAPS, Trap, forbidden_hits, missing_requirements
 from .report_common import table, write
 
-REPORT_PATH = paths.REPOSITORY_ROOT / "ADVERSARIAL_QA_REPORT.md"
+REPORT_PATH = paths.REPOSITORY_ROOT / "docs" / "ADVERSARIAL_QA_REPORT.md"
 RESULTS_PATH = paths.PROCESSED_DIR / "adversarial_qa_results.json"
 
 PASS = "PASS"

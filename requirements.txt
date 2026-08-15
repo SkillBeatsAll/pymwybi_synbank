@@ -18,7 +18,7 @@ fastapi>=0.115
 uvicorn>=0.30
 httpx>=0.27
 
-# The submission notebook (submission/SynBank_Share_of_Wallet_Analysis.ipynb) only.
+# The submission notebook (SynBank_Share_of_Wallet_Analysis.ipynb) only.
 # The notebook imports the production modules and reads the published Parquet; these
 # are for running it and drawing its charts. No pipeline module depends on them, and
 # the full test suite passes without them installed.

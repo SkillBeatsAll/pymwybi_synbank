@@ -1,4 +1,4 @@
-"""Generate ``MODEL_REPORT.md`` from the wallet engine's actual outputs.
+"""Generate ``docs/MODEL_REPORT.md`` from the wallet engine's actual outputs.
 
 The report is written, not typed. Every figure in it is read back from
 ``data/processed/*.parquet``, so it cannot claim a coefficient the engine does
@@ -17,7 +17,7 @@ import pandas as pd
 from src.syn_wallet import config
 from src.syn_wallet.wallet import assumptions, confidence, engine
 
-REPORT_PATH = config.REPOSITORY_ROOT / "MODEL_REPORT.md"
+REPORT_PATH = config.REPOSITORY_ROOT / "docs" / "MODEL_REPORT.md"
 
 
 def _connect() -> duckdb.DuckDBPyConnection:
@@ -263,7 +263,7 @@ def build_report() -> str:
         "population that sets its own coefficient**, and a sector population is used wherever it "
         "reaches three peers after that exclusion, so the coefficient differs per client. "
         "`model_benchmarks.parquet` carries one row per client x metric; the table below "
-        "summarises the populations behind them. See `MODEL_FINAL_REPORT.md` section 4.\n"
+        "summarises the populations behind them. See `docs/MODEL_FINAL_REPORT.md` section 4.\n"
     )
     benchmarks = connection.execute(
         """
@@ -518,6 +518,7 @@ def build_report() -> str:
 
 
 def main() -> None:
+    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(build_report(), encoding="utf-8")
     print(f"wrote {REPORT_PATH} ({REPORT_PATH.stat().st_size:,} bytes)")
 

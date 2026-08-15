@@ -1,4 +1,4 @@
-"""The actual prompts. This module is the single source of GENAI_PROMPTS.md.
+"""The actual prompts. This module is the single source of docs/GENAI_PROMPTS.md.
 
 The system prompt is long, and deliberately so. Every line in it exists because
 of a specific way a language model would otherwise get a banking conversation
@@ -268,7 +268,7 @@ def build_messages(question: str, intent: str, context: str) -> list[dict[str, s
 
 
 def prompt_registry() -> list[dict[str, str]]:
-    """Every prompt fragment, for GENAI_PROMPTS.md and the run report."""
+    """Every prompt fragment, for docs/GENAI_PROMPTS.md and the run report."""
     rows = [
         {"name": "system", "intent": "all", "text": SYSTEM_PROMPT},
         {"name": "user_template", "intent": "all", "text": USER_TEMPLATE},

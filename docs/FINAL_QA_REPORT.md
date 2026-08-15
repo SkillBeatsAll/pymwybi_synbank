@@ -315,7 +315,7 @@ These sections of the QA brief were not run, and are not claimed:
   console cleanliness and chart rendering are unverified here.
 - **§9** `DEMO.md`, architecture diagram, and the README's ability to answer the
   nine listed questions.
-- **§10** `submission/` — notebook, methodology document, GenAI evidence,
+- **§10** the submission set — notebook, methodology document, GenAI evidence,
   presentation data, demo script, one-page summary.
 - **§11** machine-readable final presentation metrics.
 - **§12** `JUDGING_NARRATIVE.md`.

@@ -66,5 +66,8 @@ def model_report() -> dict[str, Any]:
 
 
 def write(path: Path, body: str) -> None:
+    # The generated reports live in docs/, which is tracked but may be absent in
+    # a stripped checkout.
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
     print(f"wrote {path} ({path.stat().st_size:,} bytes)")

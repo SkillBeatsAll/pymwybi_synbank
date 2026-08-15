@@ -113,7 +113,7 @@ def build(
 
     ``config`` is accepted for symmetry and is unused: both coefficients here are
     accounting identities, so no benchmark scenario can move this pillar. That
-    immunity is itself a finding, and MODEL_SENSITIVITY.md reports it.
+    immunity is itself a finding, and docs/MODEL_SENSITIVITY.md reports it.
     """
     index = frame.index
     work = frame.copy()

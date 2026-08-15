@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Syn Bank Coverage Desk</title>
   <meta name="description" content="Share of wallet intelligence for Corporate &amp; Investment Banking coverage.">
+  <meta name="theme-color" content="#1a1b2e">
   <link rel="stylesheet" href="/assets/app.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2310161d'/><rect x='7' y='19' width='4' height='7' fill='%232a78d6'/><rect x='14' y='13' width='4' height='13' fill='%232a78d6'/><rect x='21' y='7' width='4' height='19' fill='%23fff'/></svg>">
+  <!-- The favicon is the pillar grammar at 32px: a solid rule, a half rule and a
+       dotted one, over the indigo plane. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231a1b2e'/><rect x='7' y='8' width='18' height='3' fill='%23fff'/><rect x='7' y='15' width='9' height='3' fill='%238a8ae0'/><rect x='16' y='15' width='9' height='3' fill='%23474963'/><rect x='7' y='22' width='3' height='3' fill='%23474963'/><rect x='13' y='22' width='3' height='3' fill='%23474963'/><rect x='19' y='22' width='3' height='3' fill='%23474963'/></svg>">
 </head>
 <body>
   <div class="shell">
-    <nav class="rail" aria-label="Sections">
+    <nav class="rail" id="rail" aria-label="Sections">
       <div class="rail-brand">
         <div class="mark">Syn Bank</div>
         <div class="sub-mark">Coverage Desk</div>
@@ -21,6 +24,10 @@
 
     <div class="main">
       <header class="topbar">
+        <button class="rail-toggle" id="rail-toggle" aria-controls="rail" aria-expanded="false">
+          <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="sr-only">Sections</span>
+        </button>
         <div class="title-block">
           <h1 id="page-title">Portfolio overview</h1>
           <div class="lede" id="page-lede">Where should a banker focus next?</div>
@@ -32,7 +39,7 @@
 
   <button class="copilot-toggle" id="copilot-toggle" aria-controls="copilot">
     Ask the copilot
-    <span style="opacity:.55;font-size:11px;border:1px solid rgba(255,255,255,.3);border-radius:3px;padding:1px 4px">/</span>
+    <span class="key" aria-hidden="true">/</span>
   </button>
 
   <div class="scrim" id="scrim"></div>
