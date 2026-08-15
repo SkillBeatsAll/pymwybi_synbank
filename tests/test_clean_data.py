@@ -2,8 +2,16 @@ import csv
 from pathlib import Path
 
 import duckdb
+import pytest
 
 from src.syn_wallet.clean_data import SPECS, run_pipeline
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+MISSING_SOURCES = [
+    spec.filename
+    for spec in SPECS
+    if not (REPOSITORY_ROOT / "data" / spec.filename).is_file()
+]
 
 
 def _write_csv(path: Path, columns: tuple[str, ...], rows: list[dict[str, str]]) -> None:
@@ -82,10 +90,16 @@ def test_pipeline_normalises_exact_duplicates_and_retains_identifier_conflicts(t
             assert {row[columns.index("currency")] for row in rows} == {"ZAR"}
 
 
+@pytest.mark.skipif(
+    bool(MISSING_SOURCES),
+    reason=(
+        "raw sources absent (" + ", ".join(MISSING_SOURCES) + "); "
+        "they are gitignored, so restore them with: tar -xzf data/data.tgz -C data/"
+    ),
+)
 def test_supplied_data_passes_full_reconciliation(tmp_path: Path) -> None:
     """Exercise the same assertions against the actual hackathon source files."""
-    repository_root = Path(__file__).resolve().parents[1]
-    report = run_pipeline(repository_root / "data", tmp_path / "processed")
+    report = run_pipeline(REPOSITORY_ROOT / "data", tmp_path / "processed")
 
     expected = {
         "transactional_banking": (2_802_875, 2_791_803, 11_072),

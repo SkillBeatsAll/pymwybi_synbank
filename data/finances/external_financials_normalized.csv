@@ -116,7 +116,7 @@ E06,Valterra Platinum,FY2025,employees,count,,28616.0,,OK,as_reported,0,,NON_AFS
 E07,OUTsurance Group,FY2025,revenue_total,currency,ZAR,37131000000.0,,OK,as_reported,0,,UNSOURCED,,,,"p.17 Consolidated statement of profit or loss (Insurance revenue R37,131m)"
 E07,OUTsurance Group,FY2025,revenue_south_africa,currency,ZAR,14484000000.0,,OK,as_reported,0,,UNSOURCED,,,,"Note 4 'Segment information', page 58: SA-domiciled operations = OUTsurance SA Personal & Business P&C (R13,347m) + OUTsurance Life (R1,137m) = R14,484m"
 E07,OUTsurance Group,FY2025,revenue_foreign,currency,ZAR,22647000000.0,,OK,as_reported,0,,UNSOURCED,,,,"Note 4 'Segment information', page 58: foreign operations = Youi Group Australia (R22,550m) + OUTsurance Ireland (R97m) = R22,647m. Sum with SA (R14,484m) reconciles to total insurance revenue R37,131m."
-E07,OUTsurance Group,FY2025,cost_of_sales,currency,ZAR,,Not disclosed,NOT_DISCLOSED,unknown,0,,AFS,,,,
+E07,OUTsurance Group,FY2025,cost_of_sales,currency,ZAR,28668000000.0,,OK,as_reported,0,,UNSOURCED,,,,"p.17 Consolidated statement of profit or loss (nearest analogue: cost of sales / operating expenses line item, R28,668m)"
 E07,OUTsurance Group,FY2025,inventory,currency,ZAR,,Not disclosed,NOT_DISCLOSED,unknown,0,,AFS,,,,
 E07,OUTsurance Group,FY2025,trade_receivables,currency,ZAR,1866000000.0,,OK,as_reported,0,,UNSOURCED,,,,p.19 Consolidated statement of financial position - nearest analogue: 'Other receivables' (no separate 'trade receivables' line for this insurer)
 E07,OUTsurance Group,FY2025,trade_payables,currency,ZAR,1434000000.0,,OK,as_reported,0,,UNSOURCED,,,,p.19 Consolidated statement of financial position - nearest analogue: 'Other payables' (no separate 'trade payables' line for this insurer)

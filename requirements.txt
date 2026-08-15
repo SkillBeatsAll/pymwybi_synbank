@@ -1,6 +1,11 @@
+# Stage 1 (cleaning) and stage 2 (feature layer) both run on DuckDB alone.
 duckdb>=1.4.4,<2.0
-pytest>=8.0,<9.0
+
+# pandas is used for readable tabular output in analysis/, the wallet model (stage 3,
+# which runs in pandas rather than SQL), and the Streamlit dashboard (stage 4).
 pandas>=2.2,<3.0
+
+pytest>=8.0,<9.0
 numpy>=1.26,<3.0
 scipy>=1.12,<2.0
 streamlit>=1.38,<2.0
