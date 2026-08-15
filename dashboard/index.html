@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Syn Bank Coverage Desk</title>
+  <meta name="description" content="Share of wallet intelligence for Corporate &amp; Investment Banking coverage.">
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2310161d'/><rect x='7' y='19' width='4' height='7' fill='%232a78d6'/><rect x='14' y='13' width='4' height='13' fill='%232a78d6'/><rect x='21' y='7' width='4' height='19' fill='%23fff'/></svg>">
+</head>
+<body>
+  <div class="shell">
+    <nav class="rail" aria-label="Sections">
+      <div class="rail-brand">
+        <div class="mark">Syn Bank</div>
+        <div class="sub-mark">Coverage Desk</div>
+      </div>
+      <div class="rail-nav" id="rail-nav"></div>
+      <div class="rail-foot" id="rail-foot">Connecting…</div>
+    </nav>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="title-block">
+          <h1 id="page-title">Portfolio overview</h1>
+          <div class="lede" id="page-lede">Where should a banker focus next?</div>
+        </div>
+      </header>
+      <div class="page" id="page"></div>
+    </div>
+  </div>
+
+  <button class="copilot-toggle" id="copilot-toggle" aria-controls="copilot">
+    Ask the copilot
+    <span style="opacity:.55;font-size:11px;border:1px solid rgba(255,255,255,.3);border-radius:3px;padding:1px 4px">/</span>
+  </button>
+
+  <div class="scrim" id="scrim"></div>
+
+  <aside class="copilot" id="copilot" aria-label="Client Opportunity Copilot">
+    <div class="copilot-head">
+      <div>
+        <h2>Client Opportunity Copilot</h2>
+        <div class="sub tiny">Answers only from the model outputs. Every figure is checked against the retrieved evidence before you see it.</div>
+      </div>
+      <button class="btn btn-sm" id="copilot-close" aria-label="Close copilot">Close</button>
+    </div>
+    <div class="copilot-body" id="copilot-body">
+      <div id="copilot-placeholder">
+        <p class="sub" style="margin-top:0">
+          Ask about a client, a product, the portfolio, or how much to trust a number.
+          The copilot cannot invent a figure: anything it writes that is not in the
+          retrieved evidence is rejected before it reaches you.
+        </p>
+      </div>
+    </div>
+    <div class="copilot-foot">
+      <div class="suggest" id="copilot-suggest"></div>
+      <form id="copilot-form">
+        <input id="copilot-input" type="text" placeholder="Why is this client a priority?" autocomplete="off" aria-label="Ask a question">
+        <button class="btn btn-primary" type="submit">Ask</button>
+      </form>
+    </div>
+  </aside>
+
+  <script src="/assets/app.js" type="module"></script>
+</body>
+</html>
