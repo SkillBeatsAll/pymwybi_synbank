@@ -19,9 +19,9 @@ methodology: the notebook, the dashboard, the generated briefings and this docum
 describe the same engine and read the same two published tables.
 
 Generated companion documents, each written by a script in `analysis/` that reads the Parquet
-back off disk: `MODEL_FINAL_REPORT.md` (the analytical contract), `MODEL_SENSITIVITY.md` (the
-36-run sweep), `MODEL_REPORT.md` (per-client derivations), `COMMERCIAL_INTELLIGENCE_REPORT.md`,
-`GENAI_DESIGN.md`, `GENAI_PROMPTS.md`, `AUDIT_REPORT.md` (data quality).
+back off disk: `docs/MODEL_FINAL_REPORT.md` (the analytical contract), `docs/MODEL_SENSITIVITY.md` (the
+36-run sweep), `docs/MODEL_REPORT.md` (per-client derivations), `docs/COMMERCIAL_INTELLIGENCE_REPORT.md`,
+`docs/GENAI_DESIGN.md`, `docs/GENAI_PROMPTS.md`, `docs/AUDIT_REPORT.md` (data quality).
 
 ---
 
@@ -1176,7 +1176,7 @@ outputs have since changed, the notice says so rather than quietly glossing over
 `tests/test_copilot_adversarial.py` (70 tests) and `analysis/adversarial_suite.py` cover prompt
 injection, questions about clients that do not exist, requests for a portfolio total, requests
 to compute something new, requests to convert a flow into a fee, and attempts to elicit
-competitor-ownership language. Results are recorded in `ADVERSARIAL_QA_REPORT.md`.
+competitor-ownership language. Results are recorded in `docs/ADVERSARIAL_QA_REPORT.md`.
 
 ---
 
@@ -1277,12 +1277,12 @@ the sensitivity Parquet files are then left untouched rather than regenerated.
 ## 18.5 Generated reports
 
 ```bash
-.venv/bin/python -m analysis.wallet_model_report              # -> MODEL_REPORT.md
-.venv/bin/python -m analysis.model_sensitivity_report         # -> MODEL_SENSITIVITY.md
-.venv/bin/python -m analysis.model_final_report               # -> MODEL_FINAL_REPORT.md
-.venv/bin/python -m analysis.commercial_intelligence_report   # -> COMMERCIAL_INTELLIGENCE_REPORT.md
-.venv/bin/python -m analysis.genai_prompts_report             # -> GENAI_PROMPTS.md
-.venv/bin/python -m analysis.genai_design_report              # -> GENAI_DESIGN.md
+.venv/bin/python -m analysis.wallet_model_report              # -> docs/MODEL_REPORT.md
+.venv/bin/python -m analysis.model_sensitivity_report         # -> docs/MODEL_SENSITIVITY.md
+.venv/bin/python -m analysis.model_final_report               # -> docs/MODEL_FINAL_REPORT.md
+.venv/bin/python -m analysis.commercial_intelligence_report   # -> docs/COMMERCIAL_INTELLIGENCE_REPORT.md
+.venv/bin/python -m analysis.genai_prompts_report             # -> docs/GENAI_PROMPTS.md
+.venv/bin/python -m analysis.genai_design_report              # -> docs/GENAI_DESIGN.md
 ```
 
 ## 18.6 Copilot and dashboard
@@ -1303,7 +1303,7 @@ export DEEPSEEK_API_KEY=...                                   # optional; omit t
 ## 18.8 The notebook
 
 ```bash
-.venv/bin/jupyter lab submission/SynBank_Share_of_Wallet_Analysis.ipynb
+.venv/bin/jupyter lab SynBank_Share_of_Wallet_Analysis.ipynb
 ```
 
 The bootstrap cell at the top of the notebook restores the raw CSVs and runs stages 1–4 if their

@@ -16,18 +16,18 @@ tar -xzf data/data.tgz -C data/                               # restore raw inpu
 .venv/bin/python -m src.syn_wallet.build_intelligence --overwrite          # stage 4
 .venv/bin/python -m pytest                                    # 523 tests
 .venv/bin/python -m analysis.feature_layer_walkthrough        # tour of the feature layer
-.venv/bin/python -m analysis.wallet_model_report              # → MODEL_REPORT.md
-.venv/bin/python -m analysis.model_sensitivity_report         # → MODEL_SENSITIVITY.md
-.venv/bin/python -m analysis.model_final_report               # → MODEL_FINAL_REPORT.md
-.venv/bin/python -m analysis.commercial_intelligence_report   # → COMMERCIAL_INTELLIGENCE_REPORT.md
+.venv/bin/python -m analysis.wallet_model_report              # → docs/MODEL_REPORT.md
+.venv/bin/python -m analysis.model_sensitivity_report         # → docs/MODEL_SENSITIVITY.md
+.venv/bin/python -m analysis.model_final_report               # → docs/MODEL_FINAL_REPORT.md
+.venv/bin/python -m analysis.commercial_intelligence_report   # → docs/COMMERCIAL_INTELLIGENCE_REPORT.md
 
 # Stage 5, the copilot. Works without a key; set one for generated prose.
 cp .env.example .env && $EDITOR .env          # add DEEPSEEK_API_KEY (optional)
 .venv/bin/python -m src.syn_wallet.ask --list-models           # confirm the model name
 .venv/bin/python -m src.syn_wallet.build_copilot_demos --overwrite   # stored demo answers
-.venv/bin/python -m analysis.genai_prompts_report             # → GENAI_PROMPTS.md
-.venv/bin/python -m analysis.genai_design_report              # → GENAI_DESIGN.md
-.venv/bin/python -m analysis.adversarial_qa_report            # → ADVERSARIAL_QA_REPORT.md
+.venv/bin/python -m analysis.genai_prompts_report             # → docs/GENAI_PROMPTS.md
+.venv/bin/python -m analysis.genai_design_report              # → docs/GENAI_DESIGN.md
+.venv/bin/python -m analysis.adversarial_qa_report            # → docs/ADVERSARIAL_QA_REPORT.md
 .venv/bin/python -m analysis.adversarial_qa_report --offline  #   ...without a key
 
 # Stage 6 — the dashboard.
@@ -35,18 +35,21 @@ cp .env.example .env && $EDITOR .env          # add DEEPSEEK_API_KEY (optional)
 
 # The submission notebook. Its first cell runs stages 1–4 if their outputs are missing,
 # so "Run All" on a clean clone is sufficient.
-.venv/bin/jupyter lab submission/SynBank_Share_of_Wallet_Analysis.ipynb
+.venv/bin/jupyter lab SynBank_Share_of_Wallet_Analysis.ipynb
 ```
 
 ## Submission deliverables
 
 | File | What it is |
 |---|---|
-| [`submission/SynBank_Share_of_Wallet_Analysis.ipynb`](submission/SynBank_Share_of_Wallet_Analysis.ipynb) | The reproducible notebook: ingestion → transformation → modelling → visualisation → GenAI, in 19 sections. Imports the production modules and reads the published Parquet; nothing is re-implemented or hand-typed. |
-| [`submission/METHODOLOGY.md`](submission/METHODOLOGY.md) | The formal technical and business methodology: assumptions, wallet-sizing logic, benchmarks, confidence, sensitivity, validation, GenAI architecture and limitations. |
+| [`SynBank_Share_of_Wallet_Analysis.ipynb`](SynBank_Share_of_Wallet_Analysis.ipynb) | The reproducible notebook: ingestion → transformation → modelling → visualisation → GenAI, in 19 sections. Imports the production modules and reads the published Parquet; nothing is re-implemented or hand-typed. |
+| [`METHODOLOGY.md`](METHODOLOGY.md) | The formal technical and business methodology: assumptions, wallet-sizing logic, benchmarks, confidence, sensitivity, validation, GenAI architecture and limitations. |
 
-Both describe the same engine as `MODEL_FINAL_REPORT.md` and the dashboard. There is one
+Both describe the same engine as `docs/MODEL_FINAL_REPORT.md` and the dashboard. There is one
 methodology, one analytical contract, and one set of numbers.
+
+Every generated reference document — the analytical contract, the sensitivity sweep, the
+copilot design and prompts, the data audit — lives in [`docs/`](docs/README.md).
 
 `--sensitivity` rebuilds the engine 36 times to price every arguable coefficient
 and takes a few seconds. Drop it for a fast rebuild of the model itself.
@@ -144,11 +147,11 @@ a claim about a denominator — *of the activity this client must transact
 somewhere, what fraction runs through Syn Bank* — and only three pillars can
 support one. The other two publish opportunity, never share.
 
-The final, stable analytical contract is **[MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md)**:
+The final, stable analytical contract is **[docs/MODEL_FINAL_REPORT.md](docs/MODEL_FINAL_REPORT.md)**:
 methodology, terminology, every formula, the benchmark rules, both opportunity
 rankings, the published schema, and what a dashboard may and may not show.
-**[MODEL_SENSITIVITY.md](MODEL_SENSITIVITY.md)** prices every arguable
-coefficient across 36 model runs. **[MODEL_REPORT.md](MODEL_REPORT.md)** carries
+**[docs/MODEL_SENSITIVITY.md](docs/MODEL_SENSITIVITY.md)** prices every arguable
+coefficient across 36 model runs. **[docs/MODEL_REPORT.md](docs/MODEL_REPORT.md)** carries
 the per-client derivations and three worked examples. All three are generated
 from the outputs rather than hand-written.
 
@@ -267,7 +270,7 @@ field, so identical inputs always produce identical words. Its only inputs are
 the analytical contract plus `model_sensitivity.parquet`; it recomputes nothing.
 
 Full detail in
-**[COMMERCIAL_INTELLIGENCE_REPORT.md](COMMERCIAL_INTELLIGENCE_REPORT.md)**,
+**[docs/COMMERCIAL_INTELLIGENCE_REPORT.md](docs/COMMERCIAL_INTELLIGENCE_REPORT.md)**,
 generated from the outputs.
 
 ### Selecting the primary opportunity
@@ -325,9 +328,9 @@ list and fails the build.
 ## Stage 5 — Client Opportunity Copilot (`src/syn_wallet/copilot/`)
 
 A generative layer built so the language model can only **write**, never
-calculate. Design in **[GENAI_DESIGN.md](GENAI_DESIGN.md)**; the actual prompts,
+calculate. Design in **[docs/GENAI_DESIGN.md](docs/GENAI_DESIGN.md)**; the actual prompts,
 generated from the module that sends them, in
-**[GENAI_PROMPTS.md](GENAI_PROMPTS.md)**.
+**[docs/GENAI_PROMPTS.md](docs/GENAI_PROMPTS.md)**.
 
 ```
 question → router → retrieval → context → LLM → validation → audit → answer
@@ -406,11 +409,11 @@ range marks and the model-trust page.
 
 | Page | What it answers |
 |---|---|
-| 1 · Portfolio | Three core Share of Wallet cards, two supporting signals, the focus list, and where the opportunity concentrates |
-| 2 · Heatmap | Every client × pillar, fill = opportunity score, **fill style = confidence**. Filter by sector, pillar, confidence, status |
-| 3 · Clients | Relationship snapshot, three share gauges, the opportunity table, the financial signals behind each estimate, why it is the focus, and the banker questions |
-| 4 · Model trust | Stable versus sensitive per pillar, the widest ranges in the book, the 36-run verdict, and how the benchmarks are built |
-| 5 · Products | One pillar at a time, with the observed detail that suits it — currency pairs and corridors for FX, instrument mix for trade, financing components for lending, signal categories for IB |
+| Portfolio | Three core Share of Wallet cards, two supporting signals, the focus list, and where the opportunity concentrates |
+| Heatmap | Every client × pillar, fill = opportunity score, **fill style = confidence**. Filter by sector, pillar, confidence, status |
+| Clients | Relationship snapshot, three share gauges, the opportunity table, the financial signals behind each estimate, why it is the focus, and the banker questions |
+| Model trust | Stable versus sensitive per pillar, the widest ranges in the book, the 36-run verdict, and how the benchmarks are built |
+| Products | One pillar at a time, with the observed detail that suits it — currency pairs and corridors for FX, instrument mix for trade, financing components for lending, signal categories for IB |
 
 The copilot is on every page: click **Ask the copilot** or press `/`.
 
@@ -431,6 +434,14 @@ In the heatmap, colour carries **magnitude** and fill style carries
 outline is the same score on LOW confidence. They can never be mistaken for each
 other.
 
+**No gradients, anywhere.** One indigo accent, one indigo ramp for magnitude, and
+the reserved status four. Every fill is a flat colour or a border: the half rule
+is two solid blocks, the dotted rule is a real dotted border. A gradient behind a
+heat cell would make magnitude ambiguous on the one screen asking to be trusted
+on magnitude. Two type voices, both from the system stack because the dashboard
+must run with no network — the sans for headings and figures, a monospace for
+every label that *names* rather than states.
+
 ### Architecture
 
 ```
@@ -449,5 +460,5 @@ JS + inline SVG.
 
 ---
 
-Read [MODEL_FINAL_REPORT.md](MODEL_FINAL_REPORT.md) §12 before changing what the
+Read [docs/MODEL_FINAL_REPORT.md](docs/MODEL_FINAL_REPORT.md) §12 before changing what the
 dashboard displays: it lists what may and may not go on a screen.
