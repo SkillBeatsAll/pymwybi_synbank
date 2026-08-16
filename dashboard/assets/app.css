@@ -97,17 +97,15 @@
   --critical-wash: #fbeaea;
   --critical-line: #eec2c2;
 
-  /* Sequential blue-to-amber ramp, for magnitude only. Blue carries the low
-   * and mid steps, amber marks the top step so the highest-magnitude cell is
-   * the one that draws the eye — text on --seq-600 flips back to --ink
-   * (see .cell.c-HIGH.s-5) since amber is light, unlike the dark blue steps
-   * below it. --seq-100 is a wash for tracks and bands, NOT a mark step. */
+  /* Sequential blue ramp, for magnitude only. One hue, monotone lightness,
+   * darkest at the top step so the highest-magnitude cell still draws the
+   * eye. --seq-100 is a wash for tracks and bands, NOT a mark step. */
   --seq-100: #e4ebf9;
   --seq-200: #aec4ea;
   --seq-300: #5c85d6;
   --seq-400: #0033a0;
   --seq-500: #062b6e;
-  --seq-600: #e8a33d;
+  --seq-600: #041a3f;
 
   --rail: 218px;
   --panel: 452px;
@@ -833,7 +831,7 @@ table.data tbody tr.click:hover td:first-child { box-shadow: inset 2px 0 0 0 var
 .cell.c-HIGH.s-2 { background: var(--seq-300); color: var(--ink); }
 .cell.c-HIGH.s-3 { background: var(--seq-400); }
 .cell.c-HIGH.s-4 { background: var(--seq-500); }
-.cell.c-HIGH.s-5 { background: var(--seq-600); color: var(--ink); }
+.cell.c-HIGH.s-5 { background: var(--seq-600); }
 
 .cell.c-MEDIUM { color: var(--accent-ink); border-color: var(--accent-line); }
 .cell.c-MEDIUM.s-1 { background: #fafbfe; }
