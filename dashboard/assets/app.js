@@ -11,6 +11,8 @@
  *   pillarRule   solid / half / dotted for CORE / SUPPORTING / SIGNAL_ONLY.
  */
 
+import { rankedBars, scatterPanel, benchmarkRows } from "./charts.js";
+
 const state = {
   route: { page: "portfolio", arg: null },
   cache: new Map(),
@@ -115,6 +117,32 @@ function card(title, subtitle, body, aside = null, rule = null) {
     rule ? el("div", { class: `pillar-rule ${rule}` }) : null,
     head,
     body);
+}
+
+/* Every chart carries a table twin. A tooltip may enhance a value; it may never
+ * be the only way to reach one, and a screen reader cannot hover an SVG. The
+ * toggle is a two-item segmented control in the card head, so the alternative
+ * is visible rather than discoverable. */
+function chartCard(title, subtitle, chart, table, note) {
+  const chartPane = el("div", { class: "pane" }, chart, note ? el("div", { class: "chart-note" }, note) : null);
+  const tablePane = el("div", { class: "pane hidden" }, table);
+  const buttons = [];
+  const show = (index) => {
+    chartPane.classList.toggle("hidden", index !== 0);
+    tablePane.classList.toggle("hidden", index !== 1);
+    buttons.forEach((button, position) => button.classList.toggle("on", position === index));
+  };
+  buttons.push(
+    el("button", { class: "on", onclick: () => show(0) }, "Chart"),
+    el("button", { onclick: () => { show(1); markScrollables(); } }, "Table"),
+  );
+  return el("div", { class: "card" },
+    el("div", { class: "card-head" },
+      el("div", null,
+        el("h2", null, title),
+        subtitle ? el("div", { class: "sub" }, subtitle) : null),
+      el("div", { class: "seg seg-xs" }, buttons)),
+    el("div", { class: "card-body" }, chartPane, tablePane));
 }
 
 const tableBody = (rows) => el("div", { class: "card-body tight" }, rows);
@@ -531,6 +559,80 @@ async function renderHeatmap(root) {
         ? el("div", { class: "heat-wrap" }, el("table", { class: "heat" }, el("thead", null, head), body))
         : el("div", { class: "empty-state" }, "No client matches these filters. Reset to see the full book."))));
 
+  /* The grid encodes score as fill and evidence as fill style, which is exactly
+   * the pair a reader most wants to separate. Here they are separated: score on
+   * one axis, confidence on the other, one panel per pillar. Faceting rather
+   * than colouring five series is deliberate — identity becomes which panel you
+   * are looking at, which leaves the colour channel meaning magnitude
+   * everywhere else on the page. */
+  const scatterPoints = [];
+  for (const p of products) {
+    for (const client of clients) {
+      const cell = byKey.get(`${client.entity_id}|${p.product}`);
+      if (!cell || !matches(cell)) continue;
+      if (cell.commercial_opportunity_score === null || cell.confidence === null) continue;
+      scatterPoints.push({
+        product: p.product,
+        product_label: p.label,
+        entity_id: cell.entity_id,
+        label: cell.entity_name,
+        sector: cell.sector,
+        band: cell.confidence_band,
+        x: cell.commercial_opportunity_score,
+        y: cell.confidence,
+      });
+    }
+  }
+
+  if (scatterPoints.length) {
+    const facets = el("div", { class: "facets" });
+    products.forEach((p, index) => {
+      const points = scatterPoints.filter((point) => point.product === p.product);
+      facets.append(el("div", { class: "facet" },
+        el("div", { class: "facet-head" },
+          el("span", { class: `role-tag ${roleClass(p.role)}` }, ""),
+          el("span", { class: "facet-name" }, p.label),
+          el("span", { class: "facet-count" }, `${points.length}`)),
+        scatterPanel(points, {
+          xLabel: "commercial opportunity score",
+          yLabel: "confidence",
+          /* The two rules are the published band floors, not a visual choice:
+           * HIGH starts at 0.70 and MEDIUM at 0.45. Labelled on the first panel
+           * only — five copies of the same two words is noise. */
+          rules: index === 0
+            ? [{ y: 0.7, label: "high" }, { y: 0.45, label: "medium" }]
+            : [{ y: 0.7 }, { y: 0.45 }],
+          onEnter: (event, point) => showTip(event,
+            `<div class="t-k">${esc(point.label)} · ${esc(point.product_label)}</div>` +
+            `<div class="t-row"><span>Commercial score</span><span>${score2(point.x)}</span></div>` +
+            `<div class="t-row"><span>Confidence</span><span>${score2(point.y)} (${esc(point.band)})</span></div>`),
+          onLeave: hideTip,
+        })));
+    });
+
+    const scatterTwin = dataTable(
+      ["Client", "Pillar", { label: "Score", r: true }, { label: "Confidence", r: true }, "Band"],
+      scatterPoints
+        .slice()
+        .sort((a, b) => b.x - a.x)
+        .map((point) =>
+          el("tr", { class: "click", onclick: () => go(`client/${point.entity_id}`) },
+            el("td", null, point.label),
+            el("td", { class: "dim tiny" }, point.product_label),
+            el("td", { class: "r num" }, score2(point.x)),
+            el("td", { class: "r num" }, score2(point.y)),
+            el("td", null, chip(point.band)))));
+    scatterTwin.classList.add("v-scroll");
+
+    const scatterNode = chartCard(
+      "Score against evidence",
+      "Every cell above, with the grid's two channels pulled onto separate axes",
+      facets, scatterTwin,
+      "A dot high and to the right is worth a call. A dot low and to the right is a large claim the model cannot yet stand behind — that is the row the heatmap draws as a pale dashed cell. The two rules are the published band floors, 0.70 and 0.45.");
+    scatterNode.style.marginTop = "14px";
+    root.append(scatterNode);
+  }
+
   root.append(el("div", { class: "callout", style: "margin-top:14px" },
     el("strong", null, "Reading the grid. "),
     "A solid dark cell is a well-evidenced opportunity. A pale outlined cell is the same score on LOW confidence — the model can size it but cannot stand behind it, so it never looks like the solid one. Fill carries magnitude; fill style carries evidence. The two are deliberately different channels."));
@@ -664,6 +766,41 @@ async function renderClient(root, entityId) {
           : el("div", { style: "margin-top:10px" },
               el("div", { class: "eyebrow" }, "Addressable range"),
               rangeMark(null, p.addressable.value, null, 230)))))));
+
+  /* A share is not actionable on its own — 0.16% of addressable cash flow reads
+   * as a catastrophe until you see that the median client is 0.39% and the
+   * whole pillar is thin. Each row carries its own scale, because the three
+   * denominators are not comparable and a shared axis would invite exactly the
+   * comparison the model refuses to make. Both numbers are printed, so the
+   * per-row scaling cannot mislead. */
+  const benchmarked = core.filter((p) => p.share.value !== null && p.book_median_share);
+  if (benchmarked.length) {
+    const chart = benchmarkRows(benchmarked.map((p) => ({
+      label: p.label,
+      value: p.share.value,
+      display: dash(p.share.display),
+      refValue: p.book_median_share.value,
+      refDisplay: dash(p.book_median_share.display),
+      refName: "median client",
+    })));
+    const twin = dataTable(
+      ["Pillar", { label: "This client", r: true }, { label: "Median client", r: true },
+        { label: "Whole book", r: true }, "Confidence"],
+      benchmarked.map((p) =>
+        el("tr", null,
+          el("td", null, p.label),
+          el("td", { class: "r num" }, dash(p.share.display)),
+          el("td", { class: "r num" }, dash(p.book_median_share.display)),
+          el("td", { class: "r num" }, dash(p.book_share.display)),
+          el("td", null, chip(p.confidence_band)))));
+    const node = chartCard(
+      "This client against the book",
+      "Share of wallet beside the median client in each pillar",
+      chart, twin,
+      "Each row is scaled to its own pillar. The three denominators are measured on different bases and are never compared with one another — only the client is compared with its peers.");
+    node.style.marginTop = "14px";
+    root.append(node);
+  }
 
   /* Opportunity table across all five. */
   root.append(el("div", { class: "section-head" }, el("h2", null, "Opportunities")));
@@ -953,6 +1090,54 @@ async function renderProduct(root, key) {
   root.append(el("div", { class: "section-head" },
     el("h2", null, "Clients"),
     el("div", { class: "note" }, "Ranked by evidence-weighted opportunity within this pillar.")));
+
+  /* Penetration, ranked. The table below carries the same shares in the same
+   * order the model ranks by; this card sorts by share instead and draws it,
+   * because the shape of the distribution — two clients clear of the field and
+   * the rest flat against the axis — is the finding, and no column of numbers
+   * shows a shape. Only CORE pillars have a share to draw. */
+  if (data.role === "core") {
+    const ranked = data.clients
+      .filter((row) => row.share.value !== null)
+      .slice()
+      .sort((a, b) => b.share.value - a.share.value);
+    if (ranked.length) {
+      const chart = rankedBars(
+        ranked.map((row) => ({
+          label: row.entity_name,
+          value: row.share.value,
+          display: dash(row.share.display),
+          onclick: () => go(`client/${row.entity_id}`),
+        })),
+        {
+          domainCap: 1,
+          reference: data.share.value === null
+            ? null
+            : { value: data.share.value, label: `book ${data.share.display}` },
+        },
+      );
+      const twin = dataTable(
+        ["Client", "Sector", { label: "Share", r: true }, "Confidence"],
+        ranked.map((row) =>
+          el("tr", { class: "click", onclick: () => go(`client/${row.entity_id}`) },
+            el("td", null, row.entity_name),
+            el("td", { class: "dim tiny" }, (row.sector || "").replace(/_/g, " ")),
+            el("td", { class: "r num" }, dash(row.share.display)),
+            el("td", null, chip(row.confidence_band)))));
+      const penetrationCard = chartCard(
+        "Penetration across the book",
+        `Observed ÷ ${data.denominator.toLowerCase()}, per client, best first`,
+        chart, twin,
+        `The axis stops at this pillar's best-covered client, ${dash(ranked[0].share.display)}${
+          data.share.value === null ? "" : `, and the dashed rule is the whole book at ${data.share.display}`
+        }. A fixed 0–100% scale would flatten every bar in a thin pillar into a hairline.`);
+      // The client table card follows directly with no section-head between
+      // them, so without this the two cards' borders touch.
+      penetrationCard.style.marginBottom = "14px";
+      root.append(penetrationCard);
+    }
+  }
+
   const headers = ["Client", "Sector"];
   if (!isSignal) headers.push({ label: "Observed", r: true }, { label: "Addressable", r: true });
   if (data.role === "core") headers.push({ label: "Share", r: true });

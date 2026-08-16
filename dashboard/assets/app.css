@@ -659,6 +659,82 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
 .rangemark .base.fixed { fill: var(--ink); }
 .rangemark .tick-label { fill: var(--muted); font-size: 9px; letter-spacing: -0.01em; }
 
+/* --------------------------------------------------------------- charts */
+/* Hand-rolled SVG from charts.js. Measured, not scaled: every chart reads its
+ * container width and redraws, so an 11px tick is 11px in every card instead of
+ * whatever a stretched viewBox makes of it. One fill, one hue — blue is
+ * magnitude, and anything that would need five series colours facets instead. */
+
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+
+.chart .bar { fill: var(--accent); }
+.chart .track { fill: var(--surface-sunk); }
+.chart .dot { fill: var(--accent); stroke: var(--surface); stroke-width: 1; }
+.chart .row-bg { fill: transparent; }
+.chart .grid-line { stroke: var(--rule); stroke-width: 1; }
+
+/* A reference line states a value, so it is drawn in ink. Amber is decorative
+ * in this system and must never encode a number. */
+.chart .ref-line { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.chart .ref-halo { stroke: var(--surface); stroke-width: 4; }
+.chart .ref-label {
+  fill: var(--ink-2); font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.02em;
+}
+.chart .tick {
+  fill: var(--muted); font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.02em;
+}
+.chart .cat { fill: var(--ink-2); font-size: 11px; }
+.chart .val {
+  fill: var(--ink); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.chart .cat-lead {
+  fill: var(--muted); font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.11em; text-transform: uppercase;
+}
+.chart .val-lead {
+  fill: var(--ink); font-size: 14px; font-weight: 620; font-variant-numeric: tabular-nums;
+}
+
+.chart .row-hit.click { cursor: pointer; }
+.chart .row-hit.click:hover .row-bg { fill: var(--accent-wash); }
+.chart .row-hit.click:hover .bar { fill: var(--accent-strong); }
+.chart .row-hit.click:hover .cat { fill: var(--ink); }
+.chart .dot:hover { fill: var(--accent-strong); r: 5; }
+
+.chart-note {
+  margin-top: 12px;
+  font-size: 11.8px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 74ch;
+}
+
+/* Small multiples. auto-fit rather than a fixed count, so the panels reflow
+ * instead of squeezing; minmax(0, …) because a bare track has a min-content
+ * floor and one wide panel would push the card past the viewport. */
+.facets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 16px 14px;
+}
+.facet { min-width: 0; }
+.facet-head {
+  display: flex; align-items: center; gap: 7px;
+  padding-bottom: 6px; margin-bottom: 2px; border-bottom: 1px solid var(--rule);
+}
+.facet-name {
+  font-size: 11.5px; font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.facet-count {
+  margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+
+/* The Chart/Table twin. */
+.seg-xs button { padding: 4px 10px; font-size: 11.5px; }
+.pane.hidden { display: none; }
+
 /* ---------------------------------------------------------------- stats */
 
 .stat-row { display: flex; flex-wrap: wrap; gap: 18px 32px; }
@@ -1097,11 +1173,19 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
 .spinner { padding: 44px; text-align: center; color: var(--muted); font-size: 12.5px; }
 
 .crumb { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+/* `--ink` rather than `--accent-ink`: the client-page crumb sits directly on
+ * the navy page plane, not inside a `.card`, so it never gets the light-mode
+ * token restore. `--accent-ink` is a dark navy meant for accent text on a
+ * white surface -- on the page plane it was dark-on-dark and unreadable. The
+ * heatmap's client-name crumb, which *is* inside a white table, stays legible
+ * either way since `--ink` resolves light there too. */
 .crumb button {
   background: none; border: 0; padding: 0; cursor: pointer;
-  color: var(--accent-ink); font-family: var(--font); font-size: 12px;
+  color: var(--ink); font-family: var(--font); font-size: 12px;
+  text-decoration: underline; text-decoration-color: var(--rule-strong);
+  text-underline-offset: 2px;
 }
-.crumb button:hover { text-decoration: underline; }
+.crumb button:hover { text-decoration-color: currentColor; }
 
 .gauge-row { display: flex; gap: 14px; flex-wrap: wrap; }
 .gauge {

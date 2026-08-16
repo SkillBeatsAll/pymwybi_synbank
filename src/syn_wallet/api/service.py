@@ -558,6 +558,11 @@ def client_payload(entity_id: str, store: Tables | None = None) -> dict[str, Any
     feature_row = features[features["entity_id"] == entity_id]
     feature_row = feature_row.iloc[0] if not feature_row.empty else None
 
+    # The book, for context. "We handle 0.16% of this client's addressable cash
+    # flow" is only actionable beside the median client, and the median is a
+    # published column on portfolio_summary -- not something computed here.
+    book = store["portfolio_summary"].set_index("product")
+
     pillars = []
     for _, row in client_rows.iterrows():
         product = row["product"]
@@ -596,6 +601,8 @@ def client_payload(entity_id: str, store: Tables | None = None) -> dict[str, Any
                 "addressable": figure(row["addressable_zar"]),
                 "opportunity": figure(row["opportunity_zar"]),
                 "share": figure(row["share"], "pct"),
+                "book_median_share": figure(book.loc[product, "median_client_share"], "pct"),
+                "book_share": figure(book.loc[product, "portfolio_share"], "pct"),
                 "confidence": clean(row["confidence"]),
                 "confidence_band": clean(row["confidence_band"]),
                 "headroom": clean(row["headroom_fraction"]),
