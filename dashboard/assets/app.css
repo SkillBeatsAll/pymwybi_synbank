@@ -788,7 +788,7 @@ table.data tbody tr.click:hover td:first-child { box-shadow: inset 2px 0 0 0 var
   font-weight: 600; padding: 0 0 9px; text-align: center; min-width: 120px;
 }
 .heat th.row {
-  text-align: left; font-weight: 500; font-size: 12.5px; padding-right: 14px;
+  text-align: left; font-weight: 550; font-size: 13.5px; padding-right: 14px;
   white-space: nowrap; color: var(--ink);
   /* Names stay put while the pillars scroll under them — otherwise the right
    * half of the grid is a wall of unlabelled scores. */
@@ -800,6 +800,7 @@ table.data tbody tr.click:hover td:first-child { box-shadow: inset 2px 0 0 0 var
    * butt straight against the name with no edge to read them apart. */
   box-shadow: 1px 0 0 var(--rule);
 }
+.heat th.row .crumb { font-size: 15px; }
 .heat th.row .sec {
   display: block; font-size: 9px; color: var(--muted);
   letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
