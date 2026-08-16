@@ -840,7 +840,7 @@ def sensitivity_payload(store: Tables | None = None) -> dict[str, Any]:
         "diagnostics": records(
             diagnostics[
                 ["severity", "scope", "diagnostic", "entity_id", "entity_name", "product", "detail"]
-            ].head(25)
+            ]
         ),
         "diagnostic_counts": {
             str(key): int(value)

@@ -856,7 +856,7 @@ async function renderSensitivity(root) {
   root.append(el("div", { class: "section-head" },
     el("h2", null, "Open model diagnostics"),
     el("div", { class: "note" }, `${data.diagnostic_counts.HIGH || 0} high · ${data.diagnostic_counts.MEDIUM || 0} medium · ${data.diagnostic_counts.INFO || 0} info`)));
-  const trustDiagRows = data.diagnostics.slice(0, 14).map((d) =>
+  const trustDiagRows = data.diagnostics.map((d) =>
     el("tr", null,
       el("td", null, el("span", { class: `chip ${severityChip(d.severity)}` }, d.severity)),
       el("td", { class: "tiny dim" },
@@ -865,8 +865,9 @@ async function renderSensitivity(root) {
       el("td", { class: "tiny" },
         el("strong", null, d.diagnostic.replace(/_/g, " ")), " — ", d.detail)));
 
-  root.append(el("div", { class: "card" },
-    tableBody(dataTable(["Severity", "Scope", "Finding"], trustDiagRows))));
+  const trustDiagTable = dataTable(["Severity", "Scope", "Finding"], trustDiagRows);
+  trustDiagTable.classList.add("v-scroll");
+  root.append(el("div", { class: "card" }, tableBody(trustDiagTable)));
 }
 
 /* ------------------------------------------------------------ page: 5 */

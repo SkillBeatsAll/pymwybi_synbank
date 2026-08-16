@@ -737,6 +737,11 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
  * away. */
 .table-wrap { overflow: visible; }
 .table-wrap.scrollable { overflow-x: auto; }
+/* A long finding list scrolls inside a fixed-height box rather than pushing
+ * the rest of the page down. The header pins to the top of this box, not the
+ * topbar, since the box -- not the page -- is what's scrolling now. */
+.table-wrap.v-scroll { max-height: 440px; overflow-y: auto; }
+.table-wrap.v-scroll table.data th { top: 0; }
 /* A table that fits never claims there is more to the right. */
 .table-wrap.scrollable::before,
 .heat-wrap.scrollable::before {
