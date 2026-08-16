@@ -365,7 +365,7 @@ E20,Shaftesbury Capital plc,FY2025,revenue_south_africa,currency,GBP,,Not disclo
 E20,Shaftesbury Capital plc,FY2025,revenue_foreign,currency,GBP,,Not disclosed,NOT_DISCLOSED,as_reported,0,See revenue_south_africa - entity has no South African operations to speak of,AFS,,,,
 E20,Shaftesbury Capital plc,FY2025,cost_of_sales,currency,GBP,61200000.0,,OK,as_reported,0,Not applicable in standard form for a REIT - needs AFS income statement,UNSOURCED,,,,
 E20,Shaftesbury Capital plc,FY2025,inventory,currency,GBP,,Not disclosed,NOT_DISCLOSED,as_reported,0,Not applicable - Shaftesbury Capital is a real estate investment company; investment property is held at fair value rather than as inventory,AFS,,,,
-E20,Shaftesbury Capital plc,FY2025,trade_receivables,currency,GBP,98100000.0,,OK,as_reported,0,Not located in accessed excerpt - needs AFS notes,UNSOURCED,,,,
+E20,Shaftesbury Capital plc,FY2025,trade_receivables,currency,GBP,41300000.0,,OK,as_reported,0,Not located in accessed excerpt - needs AFS notes,UNSOURCED,,,,
 E20,Shaftesbury Capital plc,FY2025,trade_payables,currency,GBP,98100000.0,,OK,as_reported,0,Not located in accessed excerpt - needs AFS notes,UNSOURCED,,,,
 E20,Shaftesbury Capital plc,FY2025,gross_debt,currency,GBP,1210800000.0,,OK,as_reported,0,Only net debt/EBITDA ratio (6.6x) and EPRA LTV (17%) located for FY2025; FY2024 net debt of £1.4bn located but not FY2025 - needs AFS notes,UNSOURCED,,,,
 E20,Shaftesbury Capital plc,FY2025,debt_current,currency,GBP,438400000.0,,OK,as_reported,0,Not located in accessed excerpt - needs AFS notes,UNSOURCED,,,,Portion repayable within 12 months
