@@ -2,16 +2,36 @@
 <html lang="en-ZA">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Syn Bank Coverage Desk</title>
   <meta name="description" content="Share of wallet intelligence for Corporate &amp; Investment Banking coverage.">
-  <meta name="theme-color" content="#1a1b2e">
+  <meta name="theme-color" content="#141229">
   <link rel="stylesheet" href="/assets/app.css">
   <!-- The favicon is the pillar grammar at 32px: a solid rule, a half rule and a
-       dotted one, over the indigo plane. -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231a1b2e'/><rect x='7' y='8' width='18' height='3' fill='%23fff'/><rect x='7' y='15' width='9' height='3' fill='%238a8ae0'/><rect x='16' y='15' width='9' height='3' fill='%23474963'/><rect x='7' y='22' width='3' height='3' fill='%23474963'/><rect x='13' y='22' width='3' height='3' fill='%23474963'/><rect x='19' y='22' width='3' height='3' fill='%23474963'/></svg>">
+       dotted one, over the violet plane. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23141229'/><rect x='7' y='8' width='18' height='3' fill='%23b8913f'/><rect x='7' y='15' width='9' height='3' fill='%23b8913f'/><rect x='16' y='15' width='9' height='3' fill='%235a5478'/><rect x='7' y='22' width='3' height='3' fill='%235a5478'/><rect x='13' y='22' width='3' height='3' fill='%235a5478'/><rect x='19' y='22' width='3' height='3' fill='%235a5478'/></svg>">
 </head>
 <body>
+  <!-- The boot screen draws the pillar grammar in sequence — solid, half,
+       dotted — so the first thing on screen is the distinction the whole
+       dashboard rests on. It is removed as soon as the first route renders. -->
+  <div class="boot" id="boot" role="status" aria-live="polite">
+    <div class="brand">
+      <div class="mark">Syn Bank Coverage Desk</div>
+      <div class="sub-mark">Share of wallet intelligence</div>
+    </div>
+    <div class="rules" aria-hidden="true">
+      <div class="rule core"><i></i></div>
+      <div class="rule supporting"><i></i></div>
+      <div class="rule signal"><i></i></div>
+    </div>
+    <div class="status" id="boot-status">Loading the model outputs</div>
+  </div>
+
+  <!-- Route-level loading. Indeterminate on purpose: the page cannot know how
+       long the store takes to project, and a fake percentage is a fake fact. -->
+  <div class="route-progress" id="route-progress" aria-hidden="true"></div>
+
   <div class="shell">
     <nav class="rail" id="rail" aria-label="Sections">
       <div class="rail-brand">
@@ -32,6 +52,11 @@
           <h1 id="page-title">Portfolio overview</h1>
           <div class="lede" id="page-lede">Where should a banker focus next?</div>
         </div>
+        <button class="jump-btn" id="jump-btn" aria-controls="palette">
+          Jump to
+          <span class="key" aria-hidden="true">⌘K</span>
+        </button>
+        <div class="stamp">20 clients · 3 shares · 2 signals</div>
       </header>
       <div class="page" id="page"></div>
     </div>
@@ -42,7 +67,22 @@
     <span class="key" aria-hidden="true">/</span>
   </button>
 
+  <!-- ⌘K / Ctrl+K. Views, clients and pillars in one list. -->
+  <div class="palette" id="palette">
+    <div class="palette-scrim" id="palette-scrim"></div>
+    <div class="palette-box" role="dialog" aria-modal="true" aria-label="Jump to">
+      <input id="palette-input" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Jump to a view, a client or a pillar" aria-label="Jump to"
+             role="combobox" aria-expanded="true" aria-controls="palette-results">
+      <div class="palette-results" id="palette-results" role="listbox" aria-label="Results"></div>
+      <div class="palette-foot">
+        <span>↑↓ move</span><span>↵ open</span><span>esc close</span>
+      </div>
+    </div>
+  </div>
+
   <div class="scrim" id="scrim"></div>
+  <div class="scrim for-rail" id="rail-scrim"></div>
 
   <aside class="copilot" id="copilot" aria-label="Client Opportunity Copilot">
     <div class="copilot-head">
@@ -52,6 +92,9 @@
       </div>
       <button class="btn btn-sm" id="copilot-close" aria-label="Close copilot">Close</button>
     </div>
+    <!-- The model in use is stated here, beside the answers it writes, rather
+         than as a status light in the navigation. -->
+    <div class="copilot-model" id="copilot-model">Checking the answer source</div>
     <div class="copilot-body" id="copilot-body">
       <div id="copilot-placeholder">
         <p class="sub" style="margin-top:0">

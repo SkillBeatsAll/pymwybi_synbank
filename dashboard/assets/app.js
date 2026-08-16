@@ -19,6 +19,10 @@ const state = {
   copilotOpen: false,
   copilotBusy: false,
   copilotClient: null,
+  paletteOpen: false,
+  paletteIndex: null,
+  paletteResults: [],
+  paletteCursor: 0,
 };
 
 /* ------------------------------------------------------------------ api */
@@ -90,9 +94,14 @@ function dataTable(headers, rows) {
     typeof header === "string"
       ? el("th", null, header)
       : el("th", { class: header.r ? "r" : null }, header.label)));
-  return el("table", { class: "data" },
-    el("thead", null, head),
-    el("tbody", null, rows));
+  /* The wrapper is inert on desktop and becomes the sideways scrollport below
+   * 900px, where a seven-column table cannot fit and the sticky column header
+   * is already switched off. Wrapping unconditionally keeps one DOM shape for
+   * both. */
+  return el("div", { class: "table-wrap" },
+    el("table", { class: "data" },
+      el("thead", null, head),
+      el("tbody", null, rows)));
 }
 
 /* A card with a titled header and an arbitrary body. */
@@ -570,9 +579,10 @@ async function renderClientList(root) {
         el("h2", null, "Client book"),
         el("div", { class: "sub" }, "Ordered by evidence-weighted opportunity"))),
     el("div", { class: "card-body tight" },
-      el("table", { class: "data" },
-        el("thead", null, head),
-        el("tbody", null, rows)))));
+      el("div", { class: "table-wrap" },
+        el("table", { class: "data" },
+          el("thead", null, head),
+          el("tbody", null, rows))))));
 }
 
 async function renderClient(root, entityId) {
@@ -1114,12 +1124,17 @@ async function refreshSuggestions() {
 
 /* --------------------------------------------------------------- router */
 
+/* Nothing here is numbered — the five pages are views, not a sequence, and an
+ * ordinal would claim an order the work does not have. They are grouped, which
+ * encodes a real distinction: three views read the book, two read the method
+ * that produced it. The count on each item states the size of the job before
+ * the click. */
 const PAGES = [
-  { id: "portfolio", label: "Portfolio", title: "Portfolio overview", lede: "Where should a banker focus next?" },
-  { id: "heatmap", label: "Heatmap", title: "Opportunity heatmap", lede: "Every client against every pillar, weighted by evidence" },
-  { id: "clients", label: "Clients", title: "Client book", lede: "Drill into one relationship" },
-  { id: "trust", label: "Model trust", title: "Sensitivity & model trust", lede: "What the model is sure of, and what it is not" },
-  { id: "product", label: "Products", title: "Product analysis", lede: "One pillar at a time" },
+  { id: "portfolio", group: "Coverage", label: "Portfolio", count: "5 pillars", title: "Portfolio overview", lede: "Where should a banker focus next?" },
+  { id: "clients", group: "Coverage", label: "Clients", count: "20", title: "Client book", lede: "Drill into one relationship" },
+  { id: "heatmap", group: "Coverage", label: "Heatmap", count: "20 × 5", title: "Opportunity heatmap", lede: "Every client against every pillar, weighted by evidence" },
+  { id: "product", group: "Method", label: "Products", count: "5", title: "Product analysis", lede: "One pillar at a time" },
+  { id: "trust", group: "Method", label: "Model trust", count: "36 runs", title: "Sensitivity & model trust", lede: "What the model is sure of, and what it is not" },
 ];
 
 function parseRoute() {
@@ -1150,8 +1165,11 @@ async function rerender() {
 
   const root = document.getElementById("page");
   root.innerHTML = "";
-  const spinner = el("div", { class: "spinner" }, "Loading…");
-  root.append(spinner);
+  /* A skeleton, not a spinner: it holds the shape of the page that is coming,
+   * so nothing jumps when the real cards land. The sweeping bar at the top of
+   * the window only appears if the wait is long enough to notice. */
+  root.append(pageSkeleton(route.page));
+  const progress = showProgress();
 
   try {
     const fresh = el("div");
@@ -1171,9 +1189,174 @@ async function rerender() {
       el("p", null, el("strong", null, "Could not load this page.")),
       el("p", { class: "tiny" }, error.message),
       el("button", { class: "btn", onclick: () => rerender() }, "Try again"))));
+  } finally {
+    progress.done();
   }
+  markScrollables();
   await refreshSuggestions();
   window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+/* -------------------------------------------------------- jump palette */
+
+/* ⌘K / Ctrl+K over every view, all 20 clients and the 5 pillars.
+ *
+ * Matching is a plain substring on name, id and sector. With a list this short
+ * a fuzzy score buys nothing and costs trust: a matcher that surfaces
+ * Shaftesbury when the reader typed "shop" is worse than no matcher at all. */
+async function paletteIndex() {
+  if (state.paletteIndex) return state.paletteIndex;
+  const items = PAGES.map((page) => ({
+    kind: "View", name: page.title, meta: page.group, hash: page.id,
+    hay: `${page.title} ${page.label} ${page.group}`.toLowerCase(),
+  }));
+  const [clients, products] = await Promise.all([api("/api/clients"), api("/api/products")]);
+  for (const client of clients) {
+    const sector = (client.sector || "").replace(/_/g, " ");
+    items.push({
+      kind: "Client", name: client.entity_name, meta: `${client.entity_id} · ${sector}`,
+      hash: `client/${client.entity_id}`,
+      hay: `${client.entity_name} ${client.entity_id} ${sector}`.toLowerCase(),
+    });
+  }
+  for (const product of products) {
+    items.push({
+      kind: "Pillar", name: product.label, meta: "product analysis",
+      hash: `product/${product.key}`,
+      hay: `${product.label} ${product.key}`.replace(/_/g, " ").toLowerCase(),
+    });
+  }
+  state.paletteIndex = items;
+  return items;
+}
+
+function paletteMatches(query) {
+  const items = state.paletteIndex || [];
+  const needle = query.trim().toLowerCase();
+  if (!needle) return items;
+  return items.filter((item) => item.hay.includes(needle));
+}
+
+function renderPaletteResults() {
+  const holder = document.getElementById("palette-results");
+  const results = paletteMatches(document.getElementById("palette-input").value);
+  state.paletteResults = results;
+  if (state.paletteCursor >= results.length) state.paletteCursor = Math.max(0, results.length - 1);
+  holder.innerHTML = "";
+  if (!results.length) {
+    holder.append(el("div", { class: "palette-empty" }, "Nothing by that name."));
+    return;
+  }
+  results.forEach((item, index) => {
+    holder.append(el("div", {
+      class: `p-item${index === state.paletteCursor ? " on" : ""}`,
+      role: "option", "aria-selected": String(index === state.paletteCursor),
+      onmousemove: () => {
+        if (state.paletteCursor === index) return;
+        state.paletteCursor = index;
+        renderPaletteResults();
+      },
+      onclick: () => paletteChoose(index),
+    },
+      el("span", { class: "kind" }, item.kind),
+      el("span", { class: "name" }, item.name),
+      el("span", { class: "meta" }, item.meta)));
+  });
+  const active = holder.children[state.paletteCursor];
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+async function openPalette() {
+  const panel = document.getElementById("palette");
+  const input = document.getElementById("palette-input");
+  state.paletteOpen = true;
+  state.paletteCursor = 0;
+  panel.classList.add("open");
+  input.value = "";
+  input.focus();
+  document.getElementById("palette-results").innerHTML = "";
+  await paletteIndex();
+  if (state.paletteOpen) renderPaletteResults();
+}
+
+function closePalette() {
+  state.paletteOpen = false;
+  document.getElementById("palette").classList.remove("open");
+}
+
+function paletteChoose(index) {
+  const item = (state.paletteResults || [])[index];
+  if (!item) return;
+  closePalette();
+  go(item.hash);
+}
+
+function movePaletteCursor(step) {
+  const count = (state.paletteResults || []).length;
+  if (!count) return;
+  state.paletteCursor = (state.paletteCursor + step + count) % count;
+  renderPaletteResults();
+}
+
+/* A table that scrolls sideways says so. On a phone the first screen of the
+ * client book is two columns wide, and a reader who cannot see that the
+ * opportunity column exists will not go looking for it. Measured rather than
+ * assumed, so the hint never appears on a table that already fits. */
+function markScrollables() {
+  document.querySelectorAll(".table-wrap, .heat-wrap").forEach((wrap) => {
+    /* Measure the table, not the wrapper. A box with `overflow: visible` reports
+     * its own padding width as scrollWidth in Chrome — the overflowing table is
+     * simply painted outside it — so asking the wrapper how wide its content is
+     * returns "it fits" right up until it runs off the page. */
+    const inner = wrap.firstElementChild;
+    const needed = inner ? Math.max(inner.scrollWidth, inner.offsetWidth) : 0;
+    wrap.classList.toggle("scrollable", needed > wrap.clientWidth + 4);
+  });
+}
+window.addEventListener("resize", markScrollables);
+
+/* -------------------------------------------------------------- loading */
+
+/* Indeterminate on purpose. The page cannot know how long the store takes to
+ * project, and a percentage it invented would be the one fake number on a
+ * screen whose whole argument is that it does not invent numbers. The 180ms
+ * delay keeps a cached route from flashing a loading bar it never needed. */
+function showProgress() {
+  const bar = document.getElementById("route-progress");
+  const timer = setTimeout(() => bar && bar.classList.add("on"), 180);
+  return {
+    done() {
+      clearTimeout(timer);
+      if (bar) bar.classList.remove("on");
+    },
+  };
+}
+
+const skelLine = (width) => el("div", { class: "skeleton skel-line", style: `width:${width}` });
+const skelBlock = (height) => el("div", { class: "skeleton", style: `height:${height};margin-top:14px` });
+const skelCard = (...lines) =>
+  el("div", { class: "skel-card" }, lines.length ? lines : [skelLine("34%"), skelLine("78%"), skelLine("56%")]);
+
+/* Each route gets the silhouette it actually renders — a grid of pillar cards,
+ * a grid of heat cells, a long table — so the skeleton is a promise the page
+ * keeps rather than a generic grey rectangle. */
+function pageSkeleton(page) {
+  const wrap = el("div", { class: "skel-row", "aria-label": "Loading", role: "status" });
+  if (page === "clients" || page === "client") {
+    wrap.append(skelCard(skelLine("28%"), skelBlock("320px")));
+  } else if (page === "heatmap") {
+    wrap.append(skelCard(skelLine("22%"), skelBlock("46px")), skelCard(skelLine("30%"), skelBlock("380px")));
+  } else if (page === "product") {
+    wrap.append(skelCard(skelLine("40%"), skelBlock("70px")),
+      el("div", { class: "grid grid-2" }, skelCard(), skelCard()),
+      skelCard(skelLine("26%"), skelBlock("240px")));
+  } else {
+    wrap.append(
+      el("div", { class: "grid grid-3" }, skelCard(), skelCard(), skelCard()),
+      el("div", { class: "grid grid-2" }, skelCard(), skelCard()),
+      skelCard(skelLine("30%"), skelBlock("220px")));
+  }
+  return wrap;
 }
 
 /* ----------------------------------------------------------------- boot */
@@ -1194,41 +1377,76 @@ function trackTopbarHeight() {
   else window.addEventListener("resize", apply);
 }
 
+/* The model in use is a fact about the answers, so it is stated where the
+ * answers appear. It used to be a status light in the navigation, which asked
+ * the reader to monitor a service — not their job, and it said nothing about
+ * the answer in front of them. Per-answer provenance is on each answer. */
+function renderCopilotModel() {
+  const holder = document.getElementById("copilot-model");
+  if (!holder) return;
+  holder.innerHTML = "";
+  const ai = state.health && state.health.ai;
+  if (!ai) {
+    holder.append("Answer source unavailable");
+    return;
+  }
+  const parts = ai.available
+    ? [`Live · ${ai.provider}`, ai.model]
+    : ["Stored answers · deterministic", `${ai.demo_answers} on file`];
+  parts.forEach((part, index) => {
+    if (index) holder.append(el("span", { class: "sep", "aria-hidden": "true" }, "·"));
+    holder.append(el("span", null, part));
+  });
+}
+
 async function boot() {
   trackTopbarHeight();
   const rail = document.getElementById("rail-nav");
-  /* Unnumbered. These five are views of one book, not steps in a sequence, and
-   * an ordinal here would claim an order the work does not have. Active state
-   * is the accent bar on the leading edge. */
+  /* Grouped, never numbered: Coverage reads the book, Method reads the model
+   * that produced it. Active state is the brass bar on the leading edge. */
+  let group = null;
+  let holder = null;
   for (const page of PAGES) {
-    rail.append(el("a", {
+    if (page.group !== group) {
+      group = page.group;
+      holder = el("div", { class: "rail-group" }, el("div", { class: "rail-group-label" }, group));
+      rail.append(holder);
+    }
+    holder.append(el("a", {
       class: "rail-link", href: `#${page.id}`, "data-page": page.id,
-    }, page.label));
+    }, el("span", null, page.label), el("span", { class: "count" }, page.count)));
   }
 
   try {
     state.health = await api("/api/health");
-    const ai = state.health.ai;
-    document.getElementById("rail-foot").innerHTML =
-      `<div><span class="ai-dot ${ai.available ? "on" : "off"}"></span>` +
-      `${ai.available ? `AI live · ${esc(ai.model)}` : "Demo mode · deterministic"}</div>` +
-      `<div style="margin-top:5px">${esc(state.health.methodology_version)}</div>`;
+    /* The rail foot carries the methodology version and nothing else. */
+    document.getElementById("rail-foot").textContent = state.health.methodology_version;
   } catch (error) {
     document.getElementById("rail-foot").textContent = "Offline";
   }
+  renderCopilotModel();
 
   /* Below 900px the rail is off-canvas. Picking a section closes it again —
    * leaving it open over the page the reader just asked for is the classic
-   * off-canvas mistake. */
+   * off-canvas mistake. The scrim gives it a second way out: tapping the page
+   * behind an off-canvas panel is what everyone tries first. */
   const railPanel = document.getElementById("rail");
   const railToggle = document.getElementById("rail-toggle");
+  const railScrim = document.getElementById("rail-scrim");
   const setRail = (open) => {
     railPanel.classList.toggle("open", open);
+    railScrim.classList.toggle("on", open);
     railToggle.setAttribute("aria-expanded", String(open));
   };
   railToggle.addEventListener("click", () => setRail(!railPanel.classList.contains("open")));
+  railScrim.addEventListener("click", () => setRail(false));
   railPanel.addEventListener("click", (event) => {
     if (event.target.closest(".rail-link")) setRail(false);
+  });
+  /* Resizing past the breakpoint leaves the rail docked and the scrim over the
+   * page it is no longer covering. */
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 900 && railPanel.classList.contains("open")) setRail(false);
   });
 
   document.getElementById("copilot-toggle").addEventListener("click", () => openCopilot());
@@ -1241,7 +1459,29 @@ async function boot() {
     input.value = "";
     askCopilot(question);
   });
+  document.getElementById("jump-btn").addEventListener("click", openPalette);
+  document.getElementById("palette-scrim").addEventListener("click", closePalette);
+  document.getElementById("palette-input").addEventListener("input", () => {
+    state.paletteCursor = 0;
+    renderPaletteResults();
+  });
+
   document.addEventListener("keydown", (event) => {
+    /* ⌘K on a Mac, Ctrl+K everywhere else. Both are claimed by the browser's
+     * own search bar, so the default has to go. */
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      if (state.paletteOpen) closePalette();
+      else openPalette();
+      return;
+    }
+    if (state.paletteOpen) {
+      if (event.key === "Escape") { event.preventDefault(); closePalette(); }
+      if (event.key === "ArrowDown") { event.preventDefault(); movePaletteCursor(1); }
+      if (event.key === "ArrowUp") { event.preventDefault(); movePaletteCursor(-1); }
+      if (event.key === "Enter") { event.preventDefault(); paletteChoose(state.paletteCursor); }
+      return;
+    }
     if (event.key === "Escape" && state.copilotOpen) closeCopilot();
     if (event.key === "Escape" && railPanel.classList.contains("open")) setRail(false);
     if (event.key === "/" && !/(INPUT|TEXTAREA|SELECT)/.test(document.activeElement.tagName)) {
@@ -1252,6 +1492,22 @@ async function boot() {
 
   window.addEventListener("hashchange", rerender);
   await rerender();
+  dismissBoot();
 }
 
-boot();
+/* The boot screen leaves only once a real page is behind it, so the reader
+ * never watches an empty shell wait for its first payload. */
+function dismissBoot() {
+  const boot = document.getElementById("boot");
+  if (!boot) return;
+  boot.classList.add("done");
+  setTimeout(() => boot.remove(), 400);
+}
+
+/* If boot itself fails, the reader must still get the shell and the error the
+ * page renderer would have shown — never a loading screen that never leaves. */
+boot().catch((error) => {
+  const status = document.getElementById("boot-status");
+  if (status) status.textContent = error.message;
+  dismissBoot();
+});

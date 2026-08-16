@@ -11,19 +11,27 @@
  *   The pillar grammar  CORE pillars carry a solid accent rule, SUPPORTING a
  *                       two-tone half rule, SIGNAL_ONLY a dotted one. Repeated
  *                       at every scale so "this is a different kind of number"
- *                       is structural rather than a footnote.
+ *                       is structural rather than a footnote. The boot loader
+ *                       draws those three rules in sequence, so the grammar is
+ *                       the first thing on screen and the last thing to leave.
  *
- * Colour is indigo: one accent, a sequential indigo ramp for magnitude, and the
- * reserved status four. NO GRADIENTS ANYWHERE — every fill in this file is a
- * flat colour or a border. The half rule is two solid blocks; the dotted rule is
- * a real dotted border. A gradient would make magnitude ambiguous in exactly the
- * places this dashboard is asking to be trusted on magnitude.
+ * Colour is deep violet and brass. NO GRADIENTS ANYWHERE — every fill in this
+ * file is a flat colour or a border. Violet (--accent, --seq-*) is the one
+ * working hue: it carries interaction and it carries magnitude. Brass
+ * (--brass*) is decorative only — the wordmark tick, the section-head tick, the
+ * active rail edge — and never encodes a value, so it can never be confused with the
+ * reserved status four. The half rule is two solid blocks; the dotted rule is a
+ * real dotted border. A gradient would read as a third, in-between kind of
+ * claim, and behind a heat cell it would make magnitude ambiguous on the one
+ * screen that is asking to be trusted on magnitude.
  *
- * Two type voices, both from the system stack because the dashboard must run
+ * Three type voices, all from the system stack because the dashboard must run
  * with no network:
- *   the sans   headings and figures. Tight tracking, tabular numerals.
- *   the mono   every label that names rather than states — eyebrows, table
- *              heads, chips, ticks, ranks. Instrumentation, not prose.
+ *   the display  a system serif, carrying only the page h1 and the section
+ *                heads — the two levels that frame an argument.
+ *   the sans     body copy, card heads and every figure. Tabular numerals.
+ *   the mono     every label that names rather than states — eyebrows, table
+ *                heads, chips, ticks, ranks. Instrumentation, not prose.
  *
  * Hairline discipline: cards are borders, not shadows. Shadow is reserved for
  * things that genuinely float — the tooltip, the copilot, a hovered heat cell.
@@ -35,29 +43,38 @@
 :root {
   color-scheme: light;
 
-  /* Surfaces — cool paper with a faint violet cast, deliberately not warm cream. */
-  --plane: #f2f2f7;
+  /* Surfaces — cool paper with a violet cast, deliberately not warm cream. */
+  --plane: #f0eff7;
   --surface: #ffffff;
-  --surface-2: #fafafd;
-  --surface-sunk: #ececf3;
+  --surface-2: #f8f7fd;
+  --surface-sunk: #e9e7f2;
 
   /* Ink — near-black carrying the same violet cast, never pure black. */
-  --ink: #17182a;
-  --ink-2: #4b4d63;
-  --muted: #7c7e94;
-  --rule: #e5e5ee;
-  --rule-strong: #cdcedb;
+  --ink: #151228;
+  --ink-2: #4a4566;
+  --muted: #797496;
+  --rule: #e6e4f0;
+  --rule-strong: #cbc7dd;
 
-  /* Accent — indigo. One hue, used sparingly. */
-  --accent: #5b57d4;
-  --accent-strong: #4b47bd;
-  --accent-ink: #3b389c;
-  --accent-wash: #f0efff;
-  --accent-line: #d5d3f7;
+  /* Accent — deep violet. One hue, used sparingly, and the only hue that
+   * works. Held dark on purpose: a bright violet reads as a consumer app, and
+   * this one is asking a banker to quote its figures to a client. */
+  --accent: #4b3fae;
+  --accent-strong: #3b3090;
+  --accent-ink: #372c86;
+  --accent-wash: #f1effc;
+  --accent-line: #d8d3f3;
+
+  /* Brass — decoration only. It never encodes a value. Violet and brass is the
+   * pairing; brass is what keeps the violet from reading as a chart library. */
+  --brass: #b8913f;
+  --brass-ink: #8d6a1e;
+  --brass-wash: #faf4e7;
+  --brass-line: #e9d9b5;
 
   /* The dark plane the rail sits on. */
-  --rail-bg: #1a1b2e;
-  --rail-line: rgba(255, 255, 255, 0.09);
+  --rail-bg: #141229;
+  --rail-line: rgba(255, 255, 255, 0.1);
 
   /* Reserved status palette. Never used for series identity. */
   --good: #0ca30c;
@@ -74,25 +91,33 @@
   --critical-wash: #fbeaea;
   --critical-line: #eec2c2;
 
-  /* Sequential indigo ramp, for magnitude only. Text flips to white at s-4. */
-  --seq-100: #e6e5fb;
-  --seq-200: #ccccf5;
-  --seq-300: #adadec;
-  --seq-400: #8a8ae0;
-  --seq-500: #5a5ac8;
-  --seq-600: #3d3d9c;
+  /* Sequential violet ramp, for magnitude only. One hue, monotone lightness,
+   * ΔL* ≥ 0.10 between steps, and a pale end at 2.12:1 against the white card
+   * so a low score is still visible. Text on the fill flips to white at
+   * --seq-400 (5.91:1), not before — --seq-300 still reads darker in ink
+   * (5.36:1) than in white (3.41:1). Re-run before touching any step:
+   *   contrast = (max(L)+0.05)/(min(L)+0.05) on relative luminance.
+   * --seq-100 is a wash for tracks and bands, NOT a mark step. */
+  --seq-100: #efedfa;
+  --seq-200: #b3abe6;
+  --seq-300: #8b80d6;
+  --seq-400: #6255bd;
+  --seq-500: #453a94;
+  --seq-600: #2e2668;
 
-  --rail: 214px;
+  --rail: 218px;
   --panel: 452px;
   /* Fallback only. The real value is measured from the topbar at boot and on
    * every resize — a hardcoded guess parks the sticky table header behind the
    * topbar the moment a page title wraps. See `trackTopbarHeight` in app.js. */
-  --topbar-h: 72px;
+  --topbar-h: 76px;
   --radius: 7px;
   --radius-sm: 5px;
-  --lift: 0 10px 30px -14px rgba(23, 24, 42, 0.42);
-  --lift-strong: 0 18px 44px -18px rgba(23, 24, 42, 0.55);
+  --lift: 0 10px 30px -14px rgba(21, 18, 40, 0.42);
+  --lift-strong: 0 18px 44px -18px rgba(21, 18, 40, 0.55);
+  --ease: cubic-bezier(0.22, 0.8, 0.3, 1);
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
@@ -101,7 +126,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
@@ -111,6 +136,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
 }
 
 /* One focus treatment for the whole surface, so nothing is reachable by
@@ -135,8 +161,22 @@ table.data th,
 .filters label,
 .legend,
 .tooltip .t-k,
-.rangemark .tick-label {
+.rangemark .tick-label,
+.rail-brand .sub-mark,
+.rail-group-label,
+.rail-foot,
+.topbar .stamp,
+.copilot-model {
   font-family: var(--mono);
+}
+
+/* The display voice: only the two levels that frame an argument. */
+#page-title,
+.section-head h2,
+.boot .mark {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.012em;
 }
 
 .eyebrow {
@@ -148,7 +188,7 @@ table.data th,
 }
 
 h1, h2, h3, h4 { margin: 0; font-weight: 620; letter-spacing: -0.014em; }
-h1 { font-size: 21px; }
+h1 { font-size: clamp(19px, 1.1vw + 15px, 23px); }
 h2 { font-size: 15.5px; }
 h3 { font-size: 13.5px; }
 
@@ -157,8 +197,8 @@ h3 { font-size: 13.5px; }
   letter-spacing: -0.022em;
   font-weight: 600;
 }
-.num-xl { font-size: 28px; line-height: 1.15; }
-.num-lg { font-size: 20px; }
+.num-xl { font-size: clamp(23px, 1.4vw + 16px, 28px); line-height: 1.15; }
+.num-lg { font-size: clamp(18px, 0.6vw + 15px, 20px); }
 .num-md { font-size: 16px; }
 
 .dim { color: var(--muted); }
@@ -182,6 +222,8 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .rail-brand {
@@ -192,29 +234,57 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.012em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* The one brass mark in the navigation. Decoration, not a status light. */
+.rail-brand .mark::before {
+  content: "";
+  width: 3px;
+  height: 15px;
+  border-radius: 1px;
+  background: var(--brass);
+  flex: 0 0 auto;
 }
 .rail-brand .sub-mark {
-  font-family: var(--mono);
   font-size: 9.5px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.46);
-  margin-top: 4px;
+  margin-top: 5px;
+  padding-left: 11px;
 }
 
-.rail-nav { padding: 12px 12px; flex: 1; }
+.rail-nav { padding: 14px 12px; flex: 1; }
 
-/* Active state is a solid accent bar on the leading edge, not a pill. The nav
- * is a set of views, not a sequence, so nothing here is numbered. */
+/* Nothing here is numbered — the five pages are views, not a sequence, and an
+ * ordinal would claim an order the work does not have. They are grouped
+ * instead, which encodes a real distinction: three views read the book, two
+ * read the method that produced it. */
+.rail-group + .rail-group { margin-top: 18px; }
+.rail-group-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+  padding: 0 11px 7px;
+}
+
+/* Active state is a solid brass bar on the leading edge, not a pill. */
 .rail-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   position: relative;
   padding: 9px 11px;
   border-radius: var(--radius-sm);
   color: rgba(255, 255, 255, 0.66);
   text-decoration: none;
   font-size: 13px;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background 140ms var(--ease), color 140ms var(--ease),
+    padding-left 140ms var(--ease);
 }
 .rail-link::before {
   content: "";
@@ -225,37 +295,40 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
   width: 3px;
   height: 0;
   border-radius: 0 2px 2px 0;
-  background: var(--accent);
-  transition: height 140ms ease;
+  background: var(--brass);
+  transition: height 180ms var(--ease);
 }
-.rail-link:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.rail-link .count {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.36);
+  transition: color 140ms var(--ease);
+}
+.rail-link:hover { background: rgba(255, 255, 255, 0.06); color: #fff; padding-left: 14px; }
+.rail-link:hover .count { color: rgba(255, 255, 255, 0.6); }
 .rail-link.active { background: rgba(255, 255, 255, 0.1); color: #fff; font-weight: 560; }
 .rail-link.active::before { height: 20px; }
+.rail-link.active .count { color: rgba(255, 255, 255, 0.62); }
 
+/* The rail foot carries the methodology version and nothing else. It used to
+ * carry an AI status light, which asked the reader to monitor a service that is
+ * not their job to monitor and said nothing about the answer in front of them —
+ * per-answer provenance is on each answer, and the model in use is stated in
+ * the copilot's own header, where the answers appear. */
 .rail-foot {
   padding: 14px 18px 18px;
   border-top: 1px solid var(--rail-line);
-  font-family: var(--mono);
   font-size: 10.5px;
   color: rgba(255, 255, 255, 0.44);
   line-height: 1.6;
 }
-.rail-foot .ai-dot {
-  display: inline-block;
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  margin-right: 6px;
-  vertical-align: 1px;
-}
-.ai-dot.on { background: var(--good); }
-.ai-dot.off { background: var(--warning); }
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   padding: 14px 28px;
   min-height: var(--topbar-h);
@@ -266,35 +339,146 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
   z-index: 20;
 }
 .topbar .title-block { min-width: 0; flex: 1; }
+.topbar .lede { color: var(--muted); font-size: 12.8px; margin-top: 2px; }
+/* Scope, stated once. The rail foot holds the version; this holds the shape of
+ * the book, so neither repeats the other. */
+.topbar .stamp {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
 
 /* The rail slides off-canvas below 900px, so it needs a way back. Hidden on
  * desktop, where the rail is always present. */
 .rail-toggle {
   display: none;
   align-items: center; justify-content: center;
-  width: 36px; height: 36px; flex: 0 0 auto;
+  width: 38px; height: 38px; flex: 0 0 auto;
   border: 1px solid var(--rule-strong); border-radius: var(--radius-sm);
   background: var(--surface); cursor: pointer; padding: 0;
+  transition: background 120ms var(--ease), border-color 120ms var(--ease);
 }
-.rail-toggle:hover { background: var(--surface-sunk); }
+.rail-toggle:hover { background: var(--surface-sunk); border-color: var(--muted); }
 .rail-toggle .bars { display: grid; gap: 3px; }
-.rail-toggle .bars i { display: block; width: 15px; height: 1.5px; background: var(--ink); border-radius: 1px; }
+.rail-toggle .bars i {
+  display: block; width: 15px; height: 1.5px; background: var(--ink); border-radius: 1px;
+  transition: transform 180ms var(--ease), opacity 140ms var(--ease);
+}
+.rail-toggle[aria-expanded="true"] .bars i:nth-child(1) { transform: translateY(4.5px) rotate(45deg); }
+.rail-toggle[aria-expanded="true"] .bars i:nth-child(2) { opacity: 0; }
+.rail-toggle[aria-expanded="true"] .bars i:nth-child(3) { transform: translateY(-4.5px) rotate(-45deg); }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
-.topbar .lede { color: var(--muted); font-size: 12.8px; margin-top: 1px; }
 
 /* Bottom padding clears the floating copilot button, which is fixed and would
  * otherwise sit on top of the last row of a table. */
-.page { padding: 22px 28px 96px; max-width: 1560px; }
-.page > * { animation: rise 240ms cubic-bezier(0.22, 0.8, 0.3, 1) both; }
-@keyframes rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.page { padding: 22px 28px 96px; max-width: 1560px; width: 100%; }
+
+/* ------------------------------------------------------------- motion */
+/* One entrance, staggered down the page, so a route reads as arriving rather
+ * than appearing. Everything else is a hover or a state change measured in
+ * ~120ms — enough to feel connected, not enough to wait for. */
+
+.page > * { animation: rise 300ms var(--ease) both; }
+.page > *:nth-child(2) { animation-delay: 40ms; }
+.page > *:nth-child(3) { animation-delay: 80ms; }
+.page > *:nth-child(4) { animation-delay: 110ms; }
+.page > *:nth-child(5) { animation-delay: 135ms; }
+.page > *:nth-child(6) { animation-delay: 155ms; }
+.page > *:nth-child(n + 7) { animation-delay: 170ms; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+/* Bars grow from their leading edge. scaleX rather than width so the browser
+ * animates on the compositor and never reflows a table mid-render. */
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.42; } }
+@keyframes sweep { 0% { left: -34%; } 100% { left: 100%; } }
+@keyframes ruleIn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .page > * { animation: none; }
+  .page > *, .meter > i, .bar-row .track > i, .boot .rule i,
+  .route-progress::after, .skeleton, .cell, .card { animation: none !important; }
   * { transition: none !important; }
 }
+
+/* ------------------------------------------------------- loading states */
+
+/* The boot loader is the pillar grammar introducing itself: a solid rule, a
+ * half rule and a dotted one, drawn in sequence. It is the same three marks the
+ * reader will spend the next ten minutes decoding, so the wait teaches
+ * something instead of spinning. */
+.boot {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--rail-bg); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px;
+  transition: opacity 320ms var(--ease), visibility 320ms var(--ease);
+}
+.boot.done { opacity: 0; visibility: hidden; }
+.boot .mark { font-size: 20px; letter-spacing: -0.01em; }
+.boot .sub-mark {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(255, 255, 255, 0.44); margin-top: 6px;
+}
+.boot .brand { text-align: center; }
+.boot .rules { display: grid; gap: 7px; width: 148px; }
+.boot .rule { height: 3px; position: relative; }
+.boot .rule i {
+  position: absolute; inset: 0; transform-origin: left center;
+  animation: ruleIn 620ms var(--ease) both, pulse 2.1s 620ms ease-in-out infinite;
+}
+.boot .rule.core i { background: var(--brass); }
+.boot .rule.supporting i {
+  background: none;
+  border-left: 74px solid var(--brass);
+  border-right: 74px solid rgba(255, 255, 255, 0.16);
+  animation-delay: 160ms, 780ms;
+}
+.boot .rule.signal i {
+  background: none;
+  border-top: 3px dotted rgba(255, 255, 255, 0.34);
+  animation-delay: 320ms, 940ms;
+}
+.boot .status {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgba(255, 255, 255, 0.4);
+}
+
+/* A determinate-looking bar would be a lie: the page does not know how long the
+ * model store takes to project. This one sweeps, and it is a flat block. */
+.route-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px;
+  z-index: 40; overflow: hidden; pointer-events: none;
+  opacity: 0; transition: opacity 160ms var(--ease);
+}
+.route-progress.on { opacity: 1; }
+.route-progress::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 34%;
+  background: var(--brass);
+  animation: sweep 1.05s linear infinite;
+}
+
+/* Skeletons hold the shape of what is coming, so the layout does not jump when
+ * it lands. Flat blocks pulsing on opacity — a shimmer sweep would be a
+ * gradient, and there are none in this file. */
+.skeleton {
+  background: var(--surface-sunk);
+  border-radius: var(--radius-sm);
+  animation: pulse 1.35s ease-in-out infinite;
+}
+.skel-line { height: 11px; margin-bottom: 9px; }
+.skel-line:last-child { margin-bottom: 0; }
+.skel-card { border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); padding: 15px 16px; }
+.skel-card .skeleton:nth-child(2) { animation-delay: 90ms; }
+.skel-card .skeleton:nth-child(3) { animation-delay: 180ms; }
+.skel-row { display: grid; gap: 14px; }
 
 /* ---------------------------------------------------------------- cards */
 
@@ -308,7 +492,9 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
+  transition: border-color 160ms var(--ease);
 }
+.card:hover { border-color: var(--rule-strong); }
 .card > :first-child { border-radius: var(--radius) var(--radius) 0 0; }
 .card > :last-child { border-radius: 0 0 var(--radius) var(--radius); }
 .card-head {
@@ -324,12 +510,24 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
 .card-body.tight { padding: 8px 16px 10px; }
 
 /* A section head is a label and a hairline that runs to the edge — structure,
- * not decoration: it says where one argument ends and the next begins. */
+ * not decoration: it says where one argument ends and the next begins. The
+ * brass tick is the only ornament, and it carries no value. */
 .section-head {
   display: flex;
   align-items: baseline;
   gap: 16px;
-  margin: 28px 0 12px;
+  margin: 30px 0 12px;
+}
+.section-head h2 { position: relative; padding-left: 12px; }
+.section-head h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.34em;
+  width: 3px;
+  height: 0.82em;
+  border-radius: 1px;
+  background: var(--brass);
 }
 .section-head::after {
   content: "";
@@ -352,8 +550,6 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
 .grid { display: grid; gap: 14px; }
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 1240px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 900px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
 
 /* -------------------------------------------------- the pillar grammar */
 /* CORE solid, SUPPORTING half, SIGNAL_ONLY dotted. The rule sits on the top
@@ -415,7 +611,7 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
  * no range gets a lone dot and a hairline — the visual claim that it does not
  * move. */
 
-.rangemark { display: block; margin-top: 8px; overflow: visible; }
+.rangemark { display: block; margin-top: 8px; overflow: visible; max-width: 100%; }
 .rangemark .band { fill: var(--seq-100); }
 .rangemark .band.wide { fill: var(--warning-wash); }
 .rangemark .axis { stroke: var(--rule-strong); stroke-width: 1; }
@@ -436,7 +632,11 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
 .stat .h { font-size: 11.3px; color: var(--muted); margin-top: 3px; }
 
 .meter { height: 6px; background: var(--surface-sunk); border-radius: 3px; overflow: hidden; margin-top: 8px; }
-.meter > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.meter > i {
+  display: block; height: 100%; background: var(--accent); border-radius: 3px;
+  transform-origin: left center;
+  animation: grow 620ms 120ms var(--ease) both;
+}
 .meter.thin { height: 4px; }
 
 /* ---------------------------------------------------------------- chips */
@@ -485,6 +685,34 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
 
 /* ---------------------------------------------------------------- tables */
 
+/* A table that does not fit its column has to go somewhere, and "off the right
+ * edge of the page" is not somewhere — that is what a two-column card row did
+ * to the focus tables between 900px and 1240px. It scrolls sideways inside its
+ * own wrapper instead.
+ *
+ * The wrapper is a scrollport ONLY once it is measured as overflowing (see
+ * markScrollables in app.js), never by breakpoint. That is deliberate: a
+ * scrollport makes the sticky column header pin to the wrapper instead of the
+ * page, so the full-width tables that actually need a sticky header — the ones
+ * that fit — keep it, and only the tables that are already unreadable trade it
+ * away. */
+.table-wrap { overflow: visible; }
+.table-wrap.scrollable { overflow-x: auto; }
+/* A table that fits never claims there is more to the right. */
+.table-wrap.scrollable::before,
+.heat-wrap.scrollable::before {
+  content: "Scroll sideways for the remaining columns";
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 0 8px;
+  position: sticky;
+  left: 0;
+}
+
 table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.data th {
   text-align: left;
@@ -503,9 +731,12 @@ table.data th {
 table.data td { padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
 table.data tbody tr:last-child td { border-bottom: 0; }
 table.data td.r, table.data th.r { text-align: right; font-variant-numeric: tabular-nums; }
-table.data tbody tr.click { cursor: pointer; transition: background 110ms ease; }
+table.data tbody tr.click { cursor: pointer; transition: background 110ms var(--ease); }
 table.data tbody tr.click:hover { background: var(--accent-wash); }
 table.data tbody tr.click:focus-within { background: var(--accent-wash); }
+/* A clickable row says so on the leading edge, in brass, on hover only. */
+table.data tbody tr.click td:first-child { box-shadow: inset 0 0 0 0 var(--brass); transition: box-shadow 110ms var(--ease); }
+table.data tbody tr.click:hover td:first-child { box-shadow: inset 2px 0 0 0 var(--brass); }
 
 /* ---------------------------------------------------------------- heatmap */
 
@@ -539,11 +770,12 @@ table.data tbody tr.click:focus-within { background: var(--accent-wash); }
   border-radius: var(--radius-sm);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: transform 110ms ease, box-shadow 110ms ease;
+  transition: transform 130ms var(--ease), box-shadow 130ms var(--ease);
   padding: 6px 8px;
   overflow: hidden;
+  animation: fade 240ms var(--ease) both;
 }
-.cell:hover { transform: translateY(-1px); box-shadow: var(--lift); }
+.cell:hover, .cell:focus-visible { transform: translateY(-2px); box-shadow: var(--lift); }
 .cell .sc { font-size: 13.5px; font-weight: 640; font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }
 .cell .meta { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
 .cell .pips { display: inline-flex; gap: 2.5px; }
@@ -557,16 +789,16 @@ table.data tbody tr.click:focus-within { background: var(--accent-wash); }
 .cell.c-HIGH { color: #fff; }
 .cell.c-HIGH.s-1 { background: var(--seq-200); color: var(--ink); }
 .cell.c-HIGH.s-2 { background: var(--seq-300); color: var(--ink); }
-.cell.c-HIGH.s-3 { background: var(--seq-400); color: var(--ink); }
+.cell.c-HIGH.s-3 { background: var(--seq-400); }
 .cell.c-HIGH.s-4 { background: var(--seq-500); }
 .cell.c-HIGH.s-5 { background: var(--seq-600); }
 
 .cell.c-MEDIUM { color: var(--accent-ink); border-color: var(--accent-line); }
-.cell.c-MEDIUM.s-1 { background: #fafaff; }
-.cell.c-MEDIUM.s-2 { background: #f3f2ff; }
-.cell.c-MEDIUM.s-3 { background: #ebeaff; }
-.cell.c-MEDIUM.s-4 { background: #e2e1fd; }
-.cell.c-MEDIUM.s-5 { background: #d9d7fb; }
+.cell.c-MEDIUM.s-1 { background: #fbfaff; }
+.cell.c-MEDIUM.s-2 { background: #f5f3fe; }
+.cell.c-MEDIUM.s-3 { background: #eeebfc; }
+.cell.c-MEDIUM.s-4 { background: #e6e2fa; }
+.cell.c-MEDIUM.s-5 { background: #dcd7f7; }
 
 .cell.c-LOW {
   background: var(--surface);
@@ -597,18 +829,19 @@ table.data tbody tr.click:focus-within { background: var(--accent-wash); }
 select, input[type="search"], input[type="text"] {
   font-family: var(--font); font-size: 13px; color: var(--ink);
   background: var(--surface); border: 1px solid var(--rule-strong);
-  border-radius: var(--radius-sm); padding: 6px 9px;
-  transition: border-color 110ms ease;
+  border-radius: var(--radius-sm); padding: 7px 9px;
+  transition: border-color 110ms var(--ease);
+  max-width: 100%;
 }
 select:hover, input:hover { border-color: var(--muted); }
 select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: var(--accent); }
 
-.seg { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: var(--radius); overflow: hidden; }
+.seg { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: var(--radius); overflow: hidden; max-width: 100%; flex-wrap: wrap; }
 .seg button {
   font-family: var(--font); font-size: 12.5px; font-weight: 550;
   padding: 7px 14px; border: 0; background: var(--surface); color: var(--ink-2);
   cursor: pointer; border-right: 1px solid var(--rule);
-  transition: background 110ms ease, color 110ms ease;
+  transition: background 110ms var(--ease), color 110ms var(--ease);
 }
 .seg button:last-child { border-right: 0; }
 .seg button:hover { background: var(--surface-sunk); color: var(--ink); }
@@ -619,9 +852,10 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
   font-family: var(--font); font-size: 12.8px; font-weight: 560;
   padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer;
   border: 1px solid var(--rule-strong); background: var(--surface); color: var(--ink);
-  transition: background 110ms ease, border-color 110ms ease;
+  transition: background 110ms var(--ease), border-color 110ms var(--ease), transform 110ms var(--ease);
 }
 .btn:hover { background: var(--surface-sunk); border-color: var(--muted); }
+.btn:active { transform: translateY(1px); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
 .btn-sm { padding: 5px 11px; font-size: 12px; }
@@ -635,9 +869,9 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
   background: var(--accent); color: #fff; border: 0; cursor: pointer;
   font-family: var(--font); font-size: 13px; font-weight: 560;
   box-shadow: var(--lift-strong);
-  transition: background 120ms ease, transform 120ms ease;
+  transition: background 140ms var(--ease), transform 140ms var(--ease);
 }
-.copilot-toggle:hover { background: var(--accent-strong); transform: translateY(-1px); }
+.copilot-toggle:hover { background: var(--accent-strong); transform: translateY(-2px); }
 .copilot-toggle .key {
   font-family: var(--mono); font-size: 10.5px; line-height: 1;
   border: 1px solid rgba(255, 255, 255, 0.36); border-radius: 3px;
@@ -645,31 +879,46 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
 }
 
 .copilot {
-  position: fixed; top: 0; right: 0; height: 100vh; width: var(--panel);
-  max-width: 92vw; background: var(--surface); border-left: 1px solid var(--rule);
+  position: fixed; top: 0; right: 0; height: 100dvh; width: var(--panel);
+  max-width: 100vw; background: var(--surface); border-left: 1px solid var(--rule);
   box-shadow: var(--lift-strong);
   display: flex; flex-direction: column; z-index: 70;
-  transform: translateX(100%); transition: transform 200ms cubic-bezier(0.22, 0.8, 0.3, 1);
+  transform: translateX(100%); transition: transform 240ms var(--ease);
 }
 .copilot.open { transform: none; }
 .copilot-head {
   padding: 15px 18px; border-bottom: 1px solid var(--rule); background: var(--surface-2);
   display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
 }
-.copilot-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+.copilot-head h2 { position: relative; padding-left: 11px; }
+/* The copilot's own leading rule. Brass, decorative, no value attached. */
+.copilot-head h2::before {
+  content: ""; position: absolute; left: 0; top: 0.24em;
+  width: 3px; height: 0.9em; border-radius: 1px; background: var(--brass);
+}
+/* The model in use is stated where the answers appear, not in the navigation.
+ * A reader deciding whether to trust an answer is looking at the answer. */
+.copilot-model {
+  font-size: 9.5px; letter-spacing: 0.11em; text-transform: uppercase;
+  color: var(--muted); padding: 8px 18px; border-bottom: 1px solid var(--rule);
+  background: var(--surface-2); display: flex; gap: 8px; flex-wrap: wrap;
+}
+.copilot-model .sep { color: var(--rule-strong); }
+.copilot-body { flex: 1; overflow-y: auto; padding: 16px 18px; overscroll-behavior: contain; }
 .copilot-foot { border-top: 1px solid var(--rule); padding: 11px 14px 13px; background: var(--surface-2); }
 .copilot-foot form { display: flex; gap: 8px; }
-.copilot-foot input { flex: 1; }
+.copilot-foot input { flex: 1; min-width: 0; }
 
 .suggest { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
 .suggest button {
   text-align: left; font-family: var(--font); font-size: 12.5px; color: var(--accent-ink);
   background: var(--accent-wash); border: 1px solid var(--accent-line); border-radius: var(--radius-sm);
-  padding: 8px 10px; cursor: pointer; transition: background 110ms ease;
+  padding: 8px 10px; cursor: pointer;
+  transition: background 110ms var(--ease), transform 110ms var(--ease);
 }
-.suggest button:hover { background: #e6e4ff; }
+.suggest button:hover { background: #e8e4f9; transform: translateX(2px); }
 
-.msg { margin-bottom: 18px; }
+.msg { margin-bottom: 18px; animation: rise 260ms var(--ease) both; }
 .msg .q {
   font-weight: 600; font-size: 13px; padding: 9px 11px;
   background: var(--surface-sunk); border-radius: var(--radius-sm);
@@ -703,18 +952,89 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
 @keyframes blink { 0%, 60%, 100% { opacity: 0.22; } 30% { opacity: 1; } }
 
 .scrim {
-  position: fixed; inset: 0; background: rgba(23, 24, 42, 0.3);
-  z-index: 65; opacity: 0; pointer-events: none; transition: opacity 180ms ease;
+  position: fixed; inset: 0; background: rgba(21, 18, 40, 0.36);
+  z-index: 65; opacity: 0; pointer-events: none; transition: opacity 200ms var(--ease);
 }
 .scrim.on { opacity: 1; pointer-events: auto; }
+/* The rail is above the copilot's scrim when it is the thing being dismissed. */
+.scrim.for-rail { z-index: 75; }
+
+/* ------------------------------------------------------- the jump palette */
+/* ⌘K / Ctrl+K. Matching is a plain substring on name, id and sector — with a
+ * list of five views, twenty clients and five pillars, a fuzzy matcher that
+ * surfaces Shaftesbury when the reader typed "shop" is worse than no matcher. */
+
+.palette { position: fixed; inset: 0; z-index: 100; display: none; }
+.palette.open { display: block; }
+.palette-scrim { position: absolute; inset: 0; background: rgba(21, 18, 40, 0.42); }
+.palette-box {
+  position: relative;
+  margin: 11vh auto 0;
+  width: min(620px, 92vw);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--lift-strong);
+  overflow: hidden;
+  animation: rise 200ms var(--ease) both;
+}
+.palette-box input {
+  width: 100%; border: 0; border-bottom: 1px solid var(--rule);
+  border-radius: 0; padding: 14px 16px; font-size: 15px; background: var(--surface);
+}
+.palette-box input:focus-visible { outline: 0; border-bottom-color: var(--accent); }
+.palette-results { max-height: 46vh; overflow-y: auto; padding: 6px; }
+.p-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.p-item .kind {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); width: 58px; flex: 0 0 58px;
+}
+.p-item .name { flex: 1; font-size: 13px; min-width: 0; }
+.p-item .meta { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
+.p-item.on { background: var(--accent-wash); border-left-color: var(--brass); }
+.p-item.on .kind { color: var(--accent-ink); }
+.palette-empty { padding: 26px; text-align: center; color: var(--muted); font-size: 12.5px; }
+.palette-foot {
+  border-top: 1px solid var(--rule); background: var(--surface-2);
+  padding: 8px 14px; display: flex; gap: 16px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* The palette has to be discoverable, so the shortcut is stated in the topbar
+ * rather than left for the reader to guess. */
+.jump-btn {
+  display: inline-flex; align-items: center; gap: 9px; flex: 0 0 auto;
+  padding: 7px 11px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--rule-strong); background: var(--surface);
+  color: var(--muted); font-family: var(--font); font-size: 12.5px;
+  transition: border-color 120ms var(--ease), color 120ms var(--ease);
+}
+.jump-btn:hover { border-color: var(--muted); color: var(--ink); }
+.jump-btn .key {
+  font-family: var(--mono); font-size: 10px; line-height: 1;
+  border: 1px solid var(--rule-strong); border-radius: 3px;
+  padding: 3px 5px; color: var(--muted);
+}
 
 /* ---------------------------------------------------------------- misc */
 
 .bar-row { display: flex; align-items: center; gap: 11px; margin-bottom: 9px; }
-.bar-row .lbl { width: 152px; flex: 0 0 152px; font-size: 12.5px; color: var(--ink-2); }
-.bar-row .track { flex: 1; height: 13px; background: var(--surface-sunk); border-radius: 3px; overflow: hidden; }
-.bar-row .track > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+/* The label may shrink below its 152px preference — in a two-column card row it
+ * has to, and a flex-basis it refuses to give up pushes the bar off the card. */
+.bar-row .lbl { flex: 0 1 152px; min-width: 84px; font-size: 12.5px; color: var(--ink-2); }
+.bar-row .track { flex: 1; height: 13px; background: var(--surface-sunk); border-radius: 3px; overflow: hidden; min-width: 40px; }
+.bar-row .track > i {
+  display: block; height: 100%; background: var(--accent); border-radius: 3px;
+  transform-origin: left center;
+  animation: grow 620ms 120ms var(--ease) both;
+}
 .bar-row .val { width: 96px; text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.bar-row.click { border-radius: var(--radius-sm); transition: background 110ms var(--ease); }
 
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 12.5px; }
 .kv dt { color: var(--muted); }
@@ -731,7 +1051,7 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
 .empty-state { padding: 36px; text-align: center; color: var(--muted); font-size: 13px; }
 .spinner { padding: 44px; text-align: center; color: var(--muted); font-size: 12.5px; }
 
-.crumb { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+.crumb { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
 .crumb button {
   background: none; border: 0; padding: 0; cursor: pointer;
   color: var(--accent-ink); font-family: var(--font); font-size: 12px;
@@ -742,7 +1062,9 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
 .gauge {
   flex: 1 1 178px; border: 1px solid var(--rule); border-radius: var(--radius-sm);
   padding: 12px 13px; background: var(--surface-2);
+  transition: border-color 140ms var(--ease);
 }
+.gauge:hover { border-color: var(--rule-strong); }
 .gauge .v { margin: 6px 0 2px; }
 
 .sig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); gap: 10px; }
@@ -759,7 +1081,7 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
   background: var(--rail-bg); color: #fff; border-radius: var(--radius-sm);
   padding: 10px 12px; font-size: 12px; line-height: 1.5; max-width: 300px;
   box-shadow: var(--lift-strong);
-  opacity: 0; transition: opacity 110ms ease;
+  opacity: 0; transition: opacity 110ms var(--ease);
 }
 .tooltip.on { opacity: 1; }
 .tooltip .t-k {
@@ -769,15 +1091,87 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
 .tooltip .t-row { display: flex; justify-content: space-between; gap: 14px; margin-top: 4px; }
 .tooltip .t-row span:last-child { font-variant-numeric: tabular-nums; }
 
+/* ---------------------------------------------------------------- responsive */
+
+@media (max-width: 1240px) {
+  .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page { padding: 20px 22px 96px; }
+  .topbar { padding: 13px 22px; }
+}
+
+@media (max-width: 1080px) {
+  :root { --rail: 196px; }
+  .section-head { flex-wrap: wrap; }
+  .section-head .note { text-align: left; max-width: none; order: 3; flex: 1 1 100%; }
+}
+
 @media (max-width: 900px) {
-  .rail { position: fixed; transform: translateX(-100%); z-index: 80; transition: transform 180ms ease; }
+  .rail {
+    position: fixed; top: 0; left: 0;
+    transform: translateX(-100%); z-index: 80;
+    transition: transform 240ms var(--ease);
+    width: min(84vw, 280px); flex-basis: min(84vw, 280px);
+  }
   .rail.open { transform: none; box-shadow: var(--lift-strong); }
   .rail-toggle { display: inline-flex; }
+  /* minmax(0, …), never a bare 1fr: a bare 1fr's minimum is min-content, so a
+   * card holding a wide table stretches its own column past the viewport and
+   * takes the page with it. That is exactly how the two portfolio insight cards
+   * used to run off the right edge. */
+  .grid-3, .grid-2 { grid-template-columns: minmax(0, 1fr); }
   .page { padding: 16px 16px 96px; }
   .topbar { padding: 12px 16px; }
-  .section-head { flex-wrap: wrap; }
-  .section-head .note { text-align: left; max-width: none; }
+  .topbar .stamp { display: none; }
+  /* No keyboard, no shortcut worth advertising — but the rail still reaches
+   * every view, and the copilot answers the same questions. */
+  .jump-btn { display: none; }
   /* The sticky offset assumes a one-line topbar; on a narrow screen the title
-   * wraps, so pin the header to the top of the scroll instead of guessing. */
+   * wraps, so pin the header to the top of the scroll instead of guessing —
+   * which also frees the table to scroll sideways inside its wrapper. */
   table.data th { position: static; }
+  /* The bleed is unconditional; the scrollport is not — see above. */
+  .table-wrap { margin: 0 -16px; padding: 0 16px; }
+  /* Wide enough that a client name and a rand figure each stay on one line —
+   * a column squeezed to three lines is harder to read than one you scroll to. */
+  .table-wrap table.data { min-width: 780px; }
+  .table-wrap table.data td { white-space: nowrap; }
+  /* Except the prose column — an action or a finding is a sentence, and a
+   * sentence on one line would push the scroll width past any thumb's reach. */
+  .table-wrap table.data td.tiny { white-space: normal; min-width: 230px; }
+  .card-body.tight { padding: 8px 0 10px; }
+  .card-body.tight .table-wrap { margin: 0; padding: 0 16px; }
+}
+
+@media (max-width: 640px) {
+  body { font-size: 13.5px; }
+  .page { padding: 14px 12px 92px; }
+  .topbar { padding: 11px 12px; gap: 11px; }
+  .card-body { padding: 13px 13px 14px; }
+  /* Only here: at this width a role tag beside a two-line card title has
+   * nowhere to go. Above 640px the heads stay on one line so cards in a row
+   * keep the same header height. */
+  .card-head { padding: 12px 13px 11px; flex-wrap: wrap; }
+  .section-head { margin: 24px 0 10px; gap: 10px; }
+  .stat-row { gap: 14px 22px; }
+  .stat { flex: 1 1 140px; }
+  .bar-row { flex-wrap: wrap; gap: 6px 10px; }
+  .bar-row .lbl { flex: 1 1 100%; width: auto; }
+  .bar-row .val { width: 72px; }
+  .filters { gap: 7px; }
+  .filters select { flex: 1 1 132px; }
+  .copilot { width: 100vw; }
+  .copilot-toggle { right: 14px; bottom: 14px; padding: 10px 14px; }
+  .copilot-toggle .key { display: none; }
+  .heat-wrap, .table-wrap { margin: 0 -13px; padding: 0 13px; }
+  .card-body.tight .table-wrap { padding: 0 13px; }
+  .gauge { flex: 1 1 100%; }
+  .empty-state, .spinner { padding: 28px 16px; }
+  .boot .rules { width: 118px; }
+  .boot .rule.supporting i { border-left-width: 59px; border-right-width: 59px; }
+}
+
+/* A pointer-less device gets no hover lift; it would fire on tap and stick. */
+@media (hover: none) {
+  .cell:hover { transform: none; box-shadow: none; }
+  .copilot-toggle:hover { transform: none; }
 }
