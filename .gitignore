@@ -6,3 +6,15 @@ data/processed/
 __pycache__/
 .pytest_cache/
 CLAUDE.md
+# Stage 5 (copilot). The audit log holds real questions and generated answers;
+# it is operational data, not source. Secrets are never written to it, but it
+# does not belong in version control either.
+copilot_audit.jsonl
+.env
+
+# Playwright browser downloads and screenshots used while checking the dashboard.
+.playwright/
+
+# macOS AppleDouble sidecars, produced when data.tgz is extracted with python tarfile.
+._*
+.DS_Store

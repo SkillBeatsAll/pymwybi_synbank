@@ -1,0 +1,33 @@
+# Build context trimming. Keep this list tight: the context is uploaded to the
+# daemon on every build, and .venv + .git + the raw CSVs are ~1.1GB of it.
+#
+# NOTE: `.env` is deliberately NOT excluded. This image is built to carry the
+# copilot API key inside it, by explicit request. See the header of Dockerfile.
+
+.venv/
+.git/
+.gitignore
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.playwright/
+.DS_Store
+._*
+
+# The raw CSVs are reproduced byte-for-byte from data/data.tgz inside the
+# build, so shipping 409MB of them in the context is pure waste.
+data/transactional_banking.csv
+data/cross_border_payments.csv
+data/trade_finance.csv
+
+# Built inside the image by stages 1-4, not copied in.
+data/processed/
+
+# ...except the stored copilot answers. These are stage 5 output and rebuilding
+# them needs live, rate-limited API calls, so the committed set is copied in.
+# They are the fallback when the key is missing, expired or rate-limited.
+!data/processed/copilot_demos.json
+
+# Operational, not source.
+copilot_audit.jsonl

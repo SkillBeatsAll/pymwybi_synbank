@@ -8,6 +8,18 @@ states a different number, both are shown.
 All monetary figures are South African Rand (ZAR) unless a different currency is named.
 "bn" = 10^9, "m" = 10^6.
 
+**Revision 2026-08-15.** Two changes since the original audit:
+
+1. **`data/finances/entities.csv` was updated** — E11 Pepkor Holdings, E12 Clicks Group and
+   E13 NEPI Rockcastle now carry a `fiscal_year_end`, and `fye_basis` is no longer `UNVERIFIED`
+   for any entity. All 20 entities are now dated. Every affected finding below has been
+   re-measured, and one **new** defect appeared as a direct consequence — see Blocker 8.
+2. **Source and URL provenance is out of scope by team decision.** Sections 4.7 and 6.2 and
+   Blocker 10 originally graded values by whether they carried a source document or URL. Those
+   measurements are retained as description, but they are **no longer treated as defects** and
+   must not gate any downstream work. Findings that concern the *value itself* rather than its
+   citation (unverifiable zeros, failed identities) are unchanged and still stand.
+
 ---
 
 ## SECTION 1: REPO MAP
@@ -249,19 +261,14 @@ flows to external financials:
 
 1. Any join keyed on FX-converted values would have nothing to convert with — no code reads
    `fx_rates_*.csv`, and the external financials are stored in **native reporting currency**,
-   not ZAR (Section 4.9). Six of 20 entities report in USD, one in EUR, one in GBP. A naive join
-   would compare ZAR flow values against USD/EUR/GBP denominators and produce silently wrong
-   ratios off by roughly 17-24x for those eight entities.
-2. Three entities (E11 Pepkor, E12 Clicks, E13 NEPI Rockcastle) have a blank `fiscal_year_end`
-   in `entities.csv`, and their nine rows in `fx_rates_fy_window.csv` are
-   `status = BLOCKED_NO_FYE` with null `fy_start`, `fy_end`, `avg_rate`, `closing_rate`. Any
-   period-aligned aggregation for those three would produce nulls or crash on a null date
-   comparison.
-3. The internal flow window is 2023-07-01 to 2026-06-30 (per `data_analysis.md`; UNVERIFIED —
+   not ZAR (Section 4.9). Seven of 20 entities report in USD, one in EUR, one in GBP. A naive
+   join would compare ZAR flow values against USD/EUR/GBP denominators and produce silently
+   wrong ratios off by roughly 17-24x for those nine entities.
+2. The internal flow window is 2023-07-01 to 2026-06-30 (per `data_analysis.md`; UNVERIFIED —
    the date range was not independently re-measured in this audit). Entity fiscal year-ends
    span 2025-06-30 to 2026-03-31 across five distinct dates. Aligning a fixed 12-month flow
    window to 20 different reporting periods requires a decision that no code currently encodes.
-4. Any denominator built from `revenue_south_africa` would be absent for 10 of 20 entities and
+3. Any denominator built from `revenue_south_africa` would be absent for 10 of 20 entities and
    zero-valued for one (E13, a genuine zero), so a share-of-wallet ratio would divide by null or
    by zero for 11 of 20 clients.
 
@@ -319,8 +326,11 @@ reporting currency and fiscal year end.
 
 ```
 E01 | BHP Group        | FY2025 | USD | 2025-06-30 | cited in AFS note text or source_doc title
-E11 | Pepkor Holdings  | FY2025 | ZAR | (blank)    | UNVERIFIED
+E11 | Pepkor Holdings  | FY2025 | ZAR | 2025-09-30 | cited in AFS note text or source_doc title
 ```
+
+As of the 2026-08-15 revision all 20 rows carry a `fiscal_year_end` and all 20 carry
+`fye_basis = "cited in AFS note text or source_doc title"`. No blanks, no `UNVERIFIED`.
 
 ---
 
@@ -415,6 +425,9 @@ fiscal-year window, for USD/GBP/EUR × 20 entities.
 E01 | BHP Group | FY2025 | USD | 2024-07-01 | 2025-06-30 | 18.1569 | 17.7758 | 249 | OK
 E11 | Pepkor    | FY2025 | USD | (blank)    | (blank)    | (blank) | (blank) |   0 | BLOCKED_NO_FYE
 ```
+
+**This file is now stale.** The nine `BLOCKED_NO_FYE` rows still block on a missing
+`fiscal_year_end` that `entities.csv` now supplies. See Blocker 8.
 
 ---
 
@@ -584,7 +597,8 @@ AFS_NOT_YET_AUDITED}`:**
 
 **`fx_rates_fy_window.csv` — `status` column, all 60 rows:** `OK` 51, `BLOCKED_NO_FYE` 9.
 `BLOCKED_NO_FYE` is **outside the closed vocabulary** (E11 Pepkor, E12 Clicks, E13 NEPI
-Rockcastle × USD/GBP/EUR).
+Rockcastle × USD/GBP/EUR). As of 2026-08-15 these 9 rows are **stale, not blocked** — the
+fiscal year ends they wait on now exist in `entities.csv`. See Blocker 8.
 
 **`fx_rate_crosscheck.csv` — `flag` column, all 17 rows:** `ok` 17 (lowercase). No absence
 values.
@@ -598,7 +612,7 @@ scan of every cell of every file in `data/finances/` for `''`, `'N/A'`, `'NA'`, 
 | data_dictionary.csv | — | — | 0 |
 | fx_rates_sarb_daily.csv | — | — | 0 |
 | fx_rate_crosscheck.csv | — | — | 0 |
-| entities.csv | fiscal_year_end | `''` | 3 |
+| entities.csv | fiscal_year_end | `''` | 0 |
 | data_quality_exceptions.csv | fy_label | `''` | 3 |
 | data_quality_exceptions.csv | value_before | `''` | 6 |
 | data_quality_exceptions.csv | value_after | `''` | 119 |
@@ -680,6 +694,13 @@ status or source at all.
 
 ### 4.7 Provenance
 
+> **Out of scope as of 2026-08-15.** The team has decided that source documents and URLs are not
+> a quality gate for this project. Everything in this section is retained as **description of
+> what the columns contain**, not as a defect list. Do not use it to exclude an entity, downgrade
+> a value, or gate a metric. The `source_doc`, `source_ref`, `source_url` and
+> `source_reliability` columns can be ignored by downstream code. What still matters is whether
+> the *value* is right — see 4.6 (zeros) and 4.12 (identities), which are unaffected.
+
 Denominator = the 294 rows with `status = 'OK'` (non-absent values).
 
 | Measure | Count | % of 294 |
@@ -748,9 +769,9 @@ entity_id filtering `n.fy_label <> e.fy_label` returns 0 rows).
 | E08 | Sanlam | FY2025 | 2025-12-31 | cited in AFS note text or source_doc title |
 | E09 | Shoprite Holdings | FY2025 | 2025-06-30 | cited in AFS note text or source_doc title |
 | E10 | Bid Corporation | FY2025 | 2025-06-30 | cited in AFS note text or source_doc title |
-| E11 | Pepkor Holdings | FY2025 | **(blank)** | **UNVERIFIED** |
-| E12 | Clicks Group | FY2025 | **(blank)** | **UNVERIFIED** |
-| E13 | NEPI Rockcastle | FY2025 | **(blank)** | **UNVERIFIED** |
+| E11 | Pepkor Holdings | FY2025 | **2025-09-30** | cited in AFS note text or source_doc title |
+| E12 | Clicks Group | FY2025 | **2025-08-31** | cited in AFS note text or source_doc title |
+| E13 | NEPI Rockcastle | FY2025 | **2025-12-31** | cited in AFS note text or source_doc title |
 | E14 | Prosus | FY2026 | 2026-03-31 | cited in AFS note text or source_doc title |
 | E15 | Naspers | FY2026 | 2026-03-31 | cited in AFS note text or source_doc title |
 | E16 | MTN Group | FY2025 | 2025-12-31 | cited in AFS note text or source_doc title |
@@ -759,11 +780,20 @@ entity_id filtering `n.fy_label <> e.fy_label` returns 0 rows).
 | E19 | Aspen Pharmacare | FY2025 | 2025-06-30 | cited in AFS note text or source_doc title |
 | E20 | Shaftesbury Capital plc | FY2025 | 2025-12-31 | cited in AFS note text or source_doc title |
 
-**Spread of financial year ends:** three distinct dates populated across 17 entities —
-2025-06-30 (6 entities: E01, E07, E09, E10, E18, E19), 2025-12-31 (8 entities: E02, E03, E04,
-E05, E06, E08, E16, E20), 2026-03-31 (3 entities: E14, E15, E17). Three entities have no year
-end recorded (E11, E12, E13). The populated dates span **9 months**, from 2025-06-30 to
-2026-03-31. `fy_label` takes two values: FY2025 (17 entities), FY2026 (3 entities).
+**Spread of financial year ends:** all 20 entities are dated, across **five distinct dates**:
+
+| fiscal_year_end | Entities | Count |
+|---|---|---:|
+| 2025-06-30 | E01, E07, E09, E10, E18, E19 | 6 |
+| 2025-08-31 | E12 Clicks Group | 1 |
+| 2025-09-30 | E11 Pepkor Holdings | 1 |
+| 2025-12-31 | E02, E03, E04, E05, E06, E08, E13, E16, E20 | 9 |
+| 2026-03-31 | E14, E15, E17 | 3 |
+
+The dates span **9 months**, from 2025-06-30 to 2026-03-31. `fy_label` takes two values:
+FY2025 (17 entities), FY2026 (3 entities). E12 (August) and E11 (September) are the only two
+entities on year ends that no other client shares, so period alignment now needs five buckets
+rather than three.
 
 **Reporting basis (audited annual vs interim):** there is **no column that states audited /
 reviewed / interim status.** The nearest proxy is the `basis` column in
@@ -776,7 +806,11 @@ audit descriptor (E11, E12, E13, E14, E15). So **at least four entities (E02, E0
 E19) are sourced from preliminary or reviewed rather than audited statements**, and the closed
 vocabulary's `AFS_NOT_YET_AUDITED` status — which exists to record exactly this — is used zero
 times. UNVERIFIED: no machine-readable field distinguishes audited from reviewed/preliminary, so
-this classification rests on reading free-text `source_doc` strings.
+this classification rests on reading free-text `source_doc` strings. **Out of scope as of
+2026-08-15** — it is a source-document question. The `basis` column remains in scope and is the
+field to use: it distinguishes `as_reported` from `derived`, `pro_forma`, `commentary`,
+`constructed` and `unknown`, which is a statement about how the number was built rather than
+about who signed it off.
 
 **Entities where more than one period appears without a period column to disambiguate:** none.
 Every table that carries financial values also carries `fy_label`, and every entity has exactly
@@ -817,14 +851,28 @@ independent rate sources exist:
   usable; 17 NOT_DISCLOSED, 6 NOT_APPLICABLE for the three pure-ZAR entities E11/E12/E13).
 - `fx_rates_fy_window.csv` — SARB daily rates averaged over each entity's own fiscal-year window
   for USD, GBP and EUR (51 of 60 rows `OK` with 249-252 observations each; 9 rows
-  `BLOCKED_NO_FYE`).
+  `BLOCKED_NO_FYE`, now stale rather than blocked — see Blocker 8).
 - `fx_rates_sarb_daily.csv` — the underlying 903 daily observations per currency.
+
+The nine stale rows are now fully derivable from `fx_rates_sarb_daily.csv`. Re-measured
+2026-08-15 against the newly supplied fiscal year ends:
+
+| Entity | FY window | USD avg | EUR avg | GBP avg | Obs per currency |
+|---|---|---:|---:|---:|---:|
+| E11 Pepkor Holdings | 2024-10-01 → 2025-09-30 | 18.0698 | 19.9693 | 23.5984 | 250 |
+| E12 Clicks Group | 2024-09-01 → 2025-08-31 | 18.0858 | 19.8942 | 23.5741 | 249 |
+| E13 NEPI Rockcastle | 2025-01-01 → 2025-12-31 | 17.8829 | 20.1810 | 23.5568 | 250 |
+
+Closing rates (last observation on or before the year end) — E11: USD 17.2813, EUR 20.3124,
+GBP 23.2408. E12: USD 17.7493, EUR 20.7400, GBP 23.9313. E13: USD 16.5980, EUR 19.4686,
+GBP 22.3160. Observation counts (249–250) sit inside the 249–252 range of the existing `OK`
+rows, so nothing about these three windows is unusual. **E13 NEPI Rockcastle is a EUR reporter
+and therefore does need conversion**; E11 and E12 are ZAR reporters and do not.
 
 `fx_rate_crosscheck.csv` compares self-reported to SARB for the 17 pairs where both exist; all
 17 are flagged `ok` with `pct_diff` in the range **-0.85% to +0.47%**, so the two rate bases
 agree to within one percent. **Which basis a future conversion should use is not recorded
-anywhere**, and no rate is available for E11, E12 or E13 from the SARB window (blocked on the
-missing fiscal year end) — though those three are ZAR reporters and so need no conversion.
+anywhere**
 
 ### 4.10 Bounds
 
@@ -883,6 +931,10 @@ The audit log is `data_quality_exceptions.csv` (144 rows). The verified-values f
 | RATE_NOT_PARSED | 1 | value |
 | CHECK_REVENUE_SPLIT | 1 | (check) |
 
+The 3 `MISSING_FYE` entries (E11, E12, E13) were **resolved on 2026-08-15** — `entities.csv` now
+carries a `fiscal_year_end` for all three. The log entries remain as history; the exception they
+describe no longer exists.
+
 **Log entries per entity:** `*` (whole-file) 10, E01 2, E06 26, E07 23, E08 25, E09 25, E10 24,
 E11 1, E12 1, E13 1, E14 2, E16 1, E17 1, E18 1, E19 1. Entities E02, E03, E04, E05, E15 and
 E20 have **zero** log entries.
@@ -908,12 +960,14 @@ entity_id + field):** 21 rows across 15 (entity, field) pairs.
 | E12 | (entity) | 1 |
 | E13 | (entity) | 1 |
 
-18 of these 21 are **not true orphans**: `avg_zar_rate` and `closing_zar_rate` are declared in
-`data_dictionary.csv` as belonging to the `fx_rates` table, so they correctly target
-`fx_rates_normalized.csv` rather than the financials table. The remaining **3 are true orphans**
-in the sense that their `field` value is the placeholder `(entity)` (rule `MISSING_FYE`,
-entities E11, E12, E13) which matches no field in any table — it targets the
-`entities.fiscal_year_end` column.
+All 21 are **not true orphans**, for two different reasons. The 18 `avg_zar_rate` /
+`closing_zar_rate` rows are declared in `data_dictionary.csv` as belonging to the `fx_rates`
+table, so they correctly target `fx_rates_normalized.csv` rather than the financials table. The
+3 `(entity)` rows (rule `MISSING_FYE`, entities E11, E12, E13) target the
+`entities.fiscal_year_end` column, which is also not a field of the financials table — and those
+three exceptions were **closed on 2026-08-15**, when all three entities gained a
+`fiscal_year_end`. The log entries were not updated to record the resolution, so the log now
+describes an exception that no longer exists.
 
 **Orphans, value side (rows in `external_financials_normalized.csv` with no log entry on
 entity_id + field): 279 of 380 rows (73.4%).** This is expected behaviour for a
@@ -1253,7 +1307,27 @@ evidence, executive dashboard, presentation) have no corresponding artefact in t
 
 ### 6.2 External-financials denominator availability, per client
 
-Classification rule used:
+**Bottom line under the 2026-08-15 scope: a `revenue_total` denominator is available for all 20
+of 20 clients. None is absent.** `revenue_total` carries `status = 'OK'` for every entity, and
+source provenance is no longer a gate. There is no entity that needs to be dropped, footnoted,
+or down-weighted for want of a citation.
+
+Two things do still constrain the denominator, and neither is about sourcing:
+
+1. **Currency** — 9 of 20 denominators are not in ZAR (Section 4.9). Convert before dividing.
+2. **Measurement basis** — the `basis` column records how the figure was arrived at:
+   `as_reported` for 14 entities, and for the rest `pro_forma` (E09 Shoprite),
+   `constructed` (E08 Sanlam), `commentary` (E06 Valterra, E10 Bid Corporation). E08's
+   `constructed` total is the one to watch: it is the entity that also fails the revenue-split
+   identity by 102,903,000,000 ZAR (Section 4.12).
+
+The original source-quality split is retained below for reference only. **It is no longer a
+readiness classification** — it grades citations, not values.
+
+<details>
+<summary>Superseded source-quality split (descriptive only)</summary>
+
+Classification rule originally used:
 
 - **Audited quality** = `revenue_total` has `status = 'OK'` and `source_reliability = 'AFS'`.
 - **Non-primary source only** = `revenue_total` is `OK` but `source_reliability` is
@@ -1288,10 +1362,13 @@ Note also that E18 The Bidvest Group is counted as `AFS` on its own declaration,
 primary-source test would move E18 into the second group, giving **11 audited / 9 non-primary /
 0 absent**.
 
-A second consideration for denominator readiness that the three-way count does not capture: for
-the nine non-ZAR reporters (Section 4.9) the denominator exists but is **not in the same currency
-as the numerator**, and for the three entities with no fiscal year end (E11, E12, E13) it exists
-but **cannot be period-aligned** to the flow window using the prepared SARB tables.
+</details>
+
+**Period alignment is no longer a constraint for any entity.** As of 2026-08-15 all 20 entities
+carry a `fiscal_year_end`, so every denominator can be period-aligned to the flow window. The
+mechanics are the only outstanding item: `fx_rates_fy_window.csv` has not been regenerated for
+E11, E12 and E13 (Blocker 8), though their windows are fully derivable from
+`fx_rates_sarb_daily.csv` (rates given in Section 4.9).
 
 ---
 
@@ -1318,13 +1395,18 @@ Ordered by downstream damage. Each is a defect actually observed, not a hypothet
    `external_financials_normalized.csv` preserves it; the wide file is the one most likely to be
    loaded.
 
-3. **Five genuine zeros carry no source reference of any kind.**
+3. **Five zeros in debt and FX-notional fields cannot be cross-checked.** *(Downgraded
+   2026-08-15 — the original framing was "carry no source reference", which is now out of scope.
+   The residual concern is not the missing citation but that these particular values are both
+   high-impact and unconfirmable by any other column.)*
    `data/finances/external_financials_normalized.csv` — E05 Gold Fields `fx_forward_notional`,
    E06 Valterra Platinum `debt_noncurrent`, E07 OUTsurance Group `gross_debt`, `debt_current`
-   and `debt_noncurrent`. All five are `status = OK`, so a consumer will treat them as verified
-   facts. A false zero on `gross_debt` reads as "this client has no borrowing need", which
-   suppresses a lending opportunity signal entirely. The five sourced zeros
-   (E12 × 3, E13 × 2) are fine.
+   and `debt_noncurrent`. All five are `status = OK`, so a consumer will treat them as facts.
+   A false zero on `gross_debt` reads as "this client has no borrowing need" and suppresses a
+   lending opportunity signal entirely. Note that E07's three zeros are mutually consistent
+   (`gross_debt = debt_current + debt_noncurrent = 0` passes the identity in Section 4.12), so
+   they are at least internally coherent. Treat E06 and E07 zero-debt findings as provisional in
+   any lending-opportunity narrative. The other five zeros (E12 × 3, E13 × 2) are unaffected.
 
 4. **Three entities fail the revenue-split identity, silently.**
    `data/finances/external_financials_wide.csv` — E08 Sanlam (`revenue_total` exceeds
@@ -1355,12 +1437,21 @@ Ordered by downstream damage. Each is a defect actually observed, not a hypothet
    it is prose in `data_analysis.md:66`. There is currently **no violation in code** — but the
    guard rail does not exist either.
 
-8. **Three entities have no fiscal year end, blocking period alignment.**
-   `data/finances/entities.csv` rows E11 Pepkor Holdings, E12 Clicks Group, E13 NEPI Rockcastle
-   have blank `fiscal_year_end` and `fye_basis = UNVERIFIED`. Consequently the 9 corresponding
-   rows in `data/finances/fx_rates_fy_window.csv` are `BLOCKED_NO_FYE` with null
-   `fy_start`/`fy_end`/`avg_rate`/`closing_rate`. Any FY-window aggregation of internal flow for
-   these three will either silently use the wrong window or produce nulls.
+8. **`fx_rates_fy_window.csv` is stale — it still reports three entities as undatable that are
+   now dated.** *(Supersedes the original "three entities have no fiscal year end" blocker,
+   which the 2026-08-15 `entities.csv` update resolved.)*
+   `data/finances/entities.csv` now gives E11 Pepkor Holdings 2025-09-30, E12 Clicks Group
+   2025-08-31 and E13 NEPI Rockcastle 2025-12-31, all with a cited `fye_basis`. But
+   `data/finances/fx_rates_fy_window.csv` was last written 2026-08-14 21:11:04, before that
+   update, and its 9 rows for those entities are still `BLOCKED_NO_FYE` with null `fy_start`,
+   `fy_end`, `avg_rate`, `closing_rate` and `n_obs = 0`.
+   The two files now **disagree with each other**, and the FX file is the one a conversion step
+   would read. Anything joining on it will conclude these three entities cannot be period-aligned
+   when they can. The windows are fully derivable from `fx_rates_sarb_daily.csv` (249–250
+   observations each; rates given in Section 4.9) — the file simply needs regenerating.
+   E13 is a EUR reporter and genuinely needs its rate; E11 and E12 are ZAR reporters and do not.
+   The 3 `MISSING_FYE` entries in `data/finances/data_quality_exceptions.csv` are likewise now
+   historical rather than open.
 
 9. **`fx_rates_fy_window.csv` uses an out-of-vocabulary status `BLOCKED_NO_FYE` (9 rows), and
    `external_financials_normalized.csv` uses `NOT_EXTRACTED` (1 row, E08 Sanlam
@@ -1369,14 +1460,15 @@ Ordered by downstream damage. Each is a defect actually observed, not a hypothet
    reject these rows or, if it uses a permissive `status != 'OK'` test, pass them without
    noticing the vocabulary has drifted.
 
-10. **Eight of 20 revenue denominators are unsourced or aggregator-sourced.**
-    `data/finances/external_financials_normalized.csv`, field `revenue_total`: E06, E07, E08,
-    E09, E10, E20 are `UNSOURCED` with no document and no URL; E17 Vodacom is from
-    marketscreener.com and E19 Aspen from stockanalysis.com, both labelled
-    `AFS_URL_UNSUPPORTED`. E18 Bidvest is labelled `AFS` but its URL is investegate.co.uk, an RNS
-    republisher — an inconsistent classification relative to the other three aggregator rows.
-    Overall, only 15.0% of the 294 non-absent values carry both a URL and a page locator, and
-    159 of 380 rows (41.8%) are self-declared `UNSOURCED`.
+10. ~~**Eight of 20 revenue denominators are unsourced or aggregator-sourced.**~~
+    **WITHDRAWN 2026-08-15 — not a defect under the current scope.** Source documents and URLs
+    are not a quality gate for this project. The underlying measurements stand and are retained
+    in Section 4.7 as description: 15.0% of the 294 non-absent values carry both a URL and a page
+    locator, and 159 of 380 rows (41.8%) are self-declared `UNSOURCED`. Nothing downstream should
+    read `source_doc`, `source_ref`, `source_url` or `source_reliability`. What replaces this as
+    the real denominator concern is **measurement basis**, not citation: E08 Sanlam's
+    `revenue_total` is `constructed` and E09 Shoprite's is `pro_forma` — see Blocker 4 and
+    Section 6.2.
 
 11. **A numeric bound is buried in free text inside an absent cell.**
     `data/finances/external_financials_normalized.csv`, E07 OUTsurance Group / `employees`:
@@ -1391,13 +1483,13 @@ Ordered by downstream damage. Each is a defect actually observed, not a hypothet
     at risk today, but the invariant "every currency-typed row names its currency" is already
     broken and will not be caught if the value is later filled in.
 
-13. **The verification trail was deleted, not migrated.** The 105 `FIX_SOURCE_COL_SHIFT` entries
-    in `data/finances/data_quality_exceptions.csv` (row 2 onward) record that
-    `verified` / `extracted_by` / `verified_date` content had leaked into the
-    `source_doc`/`source_url`/`source_ref` columns and was **cleared**. Those three columns no
-    longer exist in `external_financials_normalized.csv`. 279 of 380 value rows have no audit-log
-    entry at all, so for those rows "reviewed and correct" and "never looked at" are
-    indistinguishable.
+13. ~~**The verification trail was deleted, not migrated.**~~
+    **WITHDRAWN 2026-08-15 — not a defect under the current scope.** The finding was entirely
+    about source-citation columns: 105 `FIX_SOURCE_COL_SHIFT` entries in
+    `data/finances/data_quality_exceptions.csv` record that `verified` / `extracted_by` /
+    `verified_date` content had leaked into `source_doc`/`source_url`/`source_ref` and was
+    cleared. Since provenance is out of scope, the missing trail no longer blocks anything.
+    Retained as history in Section 4.11.
 
 **Will crash**
 
@@ -1443,29 +1535,38 @@ Ordered by downstream damage. Each is a defect actually observed, not a hypothet
   be the team's own substitute for the missing financial-statement inputs, assembled by web
   extraction rather than supplied.
 
-- **The raw inputs are not in version control.** The three CSVs the pipeline reads are gitignored.
-  `data/data.tgz` (68.06 MB) is tracked and is presumably the archive, but I did not extract it,
-  so it is UNVERIFIED whether it reproduces the three CSVs. If it does not, the pipeline is not
-  reproducible from a clean clone.
+- **The raw inputs are not in version control, but they are recoverable.** The three CSVs the
+  pipeline reads are gitignored; `data/data.tgz` (68.06 MB) is tracked. **VERIFIED 2026-08-15:**
+  the archive contains exactly those three files and all three match on SHA-256
+  (`transactional_banking.csv` `a827e867817303e1a4e32806489ae75d5e9a35b60f0381041041e37e68d1fb74`,
+  `cross_border_payments.csv` `94c2329e2ceea50c85f88af32a0beeaac9bb8cea49d748277b15d551a1d95d51`,
+  `trade_finance.csv` `2abe186bf6b8722e36a9590e19ac175ee23e6e792b8122752401fd55d02f06d1`).
+  Restore with `tar -xzf data/data.tgz -C data/`. **The pipeline is reproducible from a clean
+  clone.**
 
-- **`data/finances/` is entirely disconnected.** It was written 2026-08-14 21:11:04, four days
-  after the last pipeline run, and zero lines of code reference it. Its internal quality is
-  substantially higher than a first glance suggests — the long and wide files reconcile with zero
-  discrepancies across 340 numeric cells, all 20 entity names match the flow data exactly, the
-  gross-debt identity passes 20/20, and the FX cross-check agrees to within 0.85% — but none of
-  that quality is reachable from code today.
+- **`data/finances/` is entirely disconnected.** It was written 2026-08-14 21:11:04 (with
+  `entities.csv` revised 2026-08-15), four days after the last pipeline run, and zero lines of
+  code reference it. Its internal quality is substantially higher than a first glance suggests —
+  the long and wide files reconcile with zero discrepancies across 340 numeric cells, all 20
+  entity names match the flow data exactly, the gross-debt identity passes 20/20, all 20 entities
+  are now dated, and the FX cross-check agrees to within 0.85% — but none of that quality is
+  reachable from code today.
 
 - **Things this audit did not verify, stated explicitly:**
-  - UNVERIFIED: the contents of `data/data.tgz`.
-  - UNVERIFIED: the 2023-07-01 to 2026-06-30 date range and the 1,096-day activity claim in
-    `data_analysis.md`; I did not re-measure the date span.
+  - UNVERIFIED: the 2023-07-01 to 2026-06-30 date range. *(Since resolved — re-measured
+    2026-08-15 against `data/processed/transactional_banking.parquet`: min 2023-07-01, max
+    2026-06-30, 1,096 distinct dates. The `data_analysis.md` claim is correct.)*
   - UNVERIFIED: the 29,107 shared entity-date-direction cells between the transactional and
     cross-border datasets asserted in `data_analysis.md:66`.
   - UNVERIFIED: the percentile and median figures in `data_analysis.md` (they are self-declared
     as reservoir-sample estimates).
-  - UNVERIFIED: whether the extracted financial values are factually correct against the source
-    documents. I verified internal consistency, provenance metadata completeness, and structural
-    integrity — I did not open any annual report to check a figure.
-  - UNVERIFIED: the audited-versus-reviewed classification in Section 4.8, which rests on reading
-    free-text `source_doc` strings because no machine-readable field records it.
+  - UNVERIFIED: whether the extracted financial values are factually correct against the
+    underlying company reports. I verified internal consistency and structural integrity — I did
+    not open any annual report to check a figure. Under the 2026-08-15 scope decision this is
+    accepted rather than outstanding.
   - UNVERIFIED: the exact global git ignore configuration suppressing `.DS_Store`.
+    *(Since resolved — `.DS_Store` and `data/.DS_Store` are now listed in `.gitignore`, so the
+    global configuration no longer matters.)*
+  - ~~UNVERIFIED: the contents of `data/data.tgz`~~ — resolved above.
+  - ~~UNVERIFIED: the audited-versus-reviewed classification in Section 4.8~~ — out of scope;
+    it rested on reading free-text `source_doc` strings.
