@@ -15,9 +15,9 @@
  *                       draws those three rules in sequence, so the grammar is
  *                       the first thing on screen and the last thing to leave.
  *
- * Colour is deep violet and brass. NO GRADIENTS ANYWHERE — every fill in this
- * file is a flat colour or a border. Violet (--accent, --seq-*) is the one
- * working hue: it carries interaction and it carries magnitude. Brass
+ * Colour is Standard Bank navy/blue and amber. NO GRADIENTS ANYWHERE — every
+ * fill in this file is a flat colour or a border. Blue (--accent, --seq-*) is
+ * the one working hue: it carries interaction and it carries magnitude. Amber
  * (--brass*) is decorative only — the wordmark tick, the section-head tick, the
  * active rail edge — and never encodes a value, so it can never be confused with the
  * reserved status four. The half rule is two solid blocks; the dotted rule is a
@@ -43,37 +43,37 @@
 :root {
   color-scheme: light;
 
-  /* Surfaces — cool paper with a violet cast, deliberately not warm cream. */
-  --plane: #f0eff7;
+  /* Surfaces — cool neutral paper, deliberately not warm cream. */
+  --plane: #f7f8fa;
   --surface: #ffffff;
-  --surface-2: #f8f7fd;
-  --surface-sunk: #e9e7f2;
+  --surface-2: #f5f7fb;
+  --surface-sunk: #e8ecf3;
 
-  /* Ink — near-black carrying the same violet cast, never pure black. */
-  --ink: #151228;
-  --ink-2: #4a4566;
-  --muted: #797496;
-  --rule: #e6e4f0;
-  --rule-strong: #cbc7dd;
+  /* Ink — Standard Bank navy, never pure black. */
+  --ink: #0a1f44;
+  --ink-2: #3d4a63;
+  --muted: #5a6472;
+  --rule: #e2e6ed;
+  --rule-strong: #c7cfda;
 
-  /* Accent — deep violet. One hue, used sparingly, and the only hue that
-   * works. Held dark on purpose: a bright violet reads as a consumer app, and
-   * this one is asking a banker to quote its figures to a client. */
-  --accent: #4b3fae;
-  --accent-strong: #3b3090;
-  --accent-ink: #372c86;
-  --accent-wash: #f1effc;
-  --accent-line: #d8d3f3;
+  /* Accent — Standard Bank Blue. One hue, used sparingly, and the only hue
+   * that works. Held dark on purpose: a bright blue reads as a consumer app,
+   * and this one is asking a banker to quote its figures to a client. */
+  --accent: #0033a0;
+  --accent-strong: #00267a;
+  --accent-ink: #002b8c;
+  --accent-wash: #e9effa;
+  --accent-line: #c7d6f0;
 
-  /* Brass — decoration only. It never encodes a value. Violet and brass is the
-   * pairing; brass is what keeps the violet from reading as a chart library. */
-  --brass: #b8913f;
-  --brass-ink: #8d6a1e;
-  --brass-wash: #faf4e7;
-  --brass-line: #e9d9b5;
+  /* Amber — decoration only. It never encodes a value. Navy/blue and amber is
+   * the pairing; amber is what keeps the blue from reading as a chart library. */
+  --brass: #e8a33d;
+  --brass-ink: #8a5d14;
+  --brass-wash: #fbf1e0;
+  --brass-line: #f0dba8;
 
   /* The dark plane the rail sits on. */
-  --rail-bg: #141229;
+  --rail-bg: #0a1f44;
   --rail-line: rgba(255, 255, 255, 0.1);
 
   /* Reserved status palette. Never used for series identity. */
@@ -91,19 +91,17 @@
   --critical-wash: #fbeaea;
   --critical-line: #eec2c2;
 
-  /* Sequential violet ramp, for magnitude only. One hue, monotone lightness,
-   * ΔL* ≥ 0.10 between steps, and a pale end at 2.12:1 against the white card
-   * so a low score is still visible. Text on the fill flips to white at
-   * --seq-400 (5.91:1), not before — --seq-300 still reads darker in ink
-   * (5.36:1) than in white (3.41:1). Re-run before touching any step:
-   *   contrast = (max(L)+0.05)/(min(L)+0.05) on relative luminance.
-   * --seq-100 is a wash for tracks and bands, NOT a mark step. */
-  --seq-100: #efedfa;
-  --seq-200: #b3abe6;
-  --seq-300: #8b80d6;
-  --seq-400: #6255bd;
-  --seq-500: #453a94;
-  --seq-600: #2e2668;
+  /* Sequential blue-to-amber ramp, for magnitude only. Blue carries the low
+   * and mid steps, amber marks the top step so the highest-magnitude cell is
+   * the one that draws the eye — text on --seq-600 flips back to --ink
+   * (see .cell.c-HIGH.s-5) since amber is light, unlike the dark blue steps
+   * below it. --seq-100 is a wash for tracks and bands, NOT a mark step. */
+  --seq-100: #e4ebf9;
+  --seq-200: #aec4ea;
+  --seq-300: #5c85d6;
+  --seq-400: #0033a0;
+  --seq-500: #062b6e;
+  --seq-600: #e8a33d;
 
   --rail: 218px;
   --panel: 452px;
@@ -489,12 +487,40 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
  * header. The two children that touch the top edge round their own corners
  * instead. */
 .card {
-  background: var(--surface);
+  background: var(--rail-bg);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
-  transition: border-color 160ms var(--ease);
+  color: #fff;
+  transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
+
+  /* Every descendant reads its colour through var(--ink), var(--muted),
+   * var(--surface-2) etc. — redeclaring those tokens here turns the whole
+   * card (and everything nested inside it: chips, tables, range marks,
+   * links) navy-with-white-text without touching a single nested rule. */
+  --ink: #ffffff;
+  --ink-2: #dbe2f0;
+  --muted: #9fb0c9;
+  --rule: rgba(255, 255, 255, 0.14);
+  --rule-strong: rgba(255, 255, 255, 0.28);
+  --surface: transparent;
+  --surface-2: rgba(255, 255, 255, 0.05);
+  --surface-sunk: rgba(255, 255, 255, 0.09);
+  --accent: #6a93de;
+  --accent-strong: #8fb0e8;
+  --accent-ink: #bcd2f7;
+  --accent-wash: rgba(106, 147, 222, 0.18);
+  --accent-line: rgba(106, 147, 222, 0.4);
 }
-.card:hover { border-color: var(--rule-strong); }
+.card:hover {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 2px var(--brass), 0 0 34px 6px rgba(232, 163, 61, 0.6);
+}
+/* The reserved status four keep their hue but read too dark on navy when
+ * used as bare text with no wash behind them (chips carry their own wash
+ * and are unaffected). Brightened for legibility inside a dark card only. */
+.card .status-PRIORITY, .card .sens-STABLE { color: #4ee06a; }
+.card .status-INVESTIGATE, .card .sens-MODERATE { color: #ffc36b; }
+.card .sens-SENSITIVE { color: #ff8f8f; }
 .card > :first-child { border-radius: var(--radius) var(--radius) 0 0; }
 .card > :last-child { border-radius: 0 0 var(--radius) var(--radius); }
 .card-head {
@@ -791,14 +817,14 @@ table.data tbody tr.click:hover td:first-child { box-shadow: inset 2px 0 0 0 var
 .cell.c-HIGH.s-2 { background: var(--seq-300); color: var(--ink); }
 .cell.c-HIGH.s-3 { background: var(--seq-400); }
 .cell.c-HIGH.s-4 { background: var(--seq-500); }
-.cell.c-HIGH.s-5 { background: var(--seq-600); }
+.cell.c-HIGH.s-5 { background: var(--seq-600); color: var(--ink); }
 
 .cell.c-MEDIUM { color: var(--accent-ink); border-color: var(--accent-line); }
-.cell.c-MEDIUM.s-1 { background: #fbfaff; }
-.cell.c-MEDIUM.s-2 { background: #f5f3fe; }
-.cell.c-MEDIUM.s-3 { background: #eeebfc; }
-.cell.c-MEDIUM.s-4 { background: #e6e2fa; }
-.cell.c-MEDIUM.s-5 { background: #dcd7f7; }
+.cell.c-MEDIUM.s-1 { background: #fafbfe; }
+.cell.c-MEDIUM.s-2 { background: #f2f5fc; }
+.cell.c-MEDIUM.s-3 { background: #e6edf9; }
+.cell.c-MEDIUM.s-4 { background: #d6e2f5; }
+.cell.c-MEDIUM.s-5 { background: #c2d4ef; }
 
 .cell.c-LOW {
   background: var(--surface);
