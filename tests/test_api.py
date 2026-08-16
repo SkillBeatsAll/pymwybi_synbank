@@ -106,6 +106,27 @@ def test_client_pillar_figures_match_the_selection_detail(store) -> None:
             assert pillar["confidence_band"] == row["confidence_band"]
 
 
+def test_client_book_benchmark_is_read_not_computed(store) -> None:
+    """The client page's "against the book" chart quotes published columns.
+
+    A share is not actionable alone -- 0.06% of addressable cash flow reads as a
+    catastrophe until the median client turns out to be 0.39%. The comparison is
+    therefore shipped with the payload, and it has to be the same median the
+    portfolio page shows, not one the browser or this layer derived.
+    """
+    summary = store["portfolio_summary"].set_index("product")
+    for entity_id in ("E02", "E09", "E17"):
+        payload = service.client_payload(entity_id, store)
+        for pillar in payload["pillars"]:
+            for key, column in (
+                ("book_median_share", "median_client_share"),
+                ("book_share", "portfolio_share"),
+            ):
+                assert pillar[key]["value"] == pytest.approx(
+                    service.clean(summary.loc[pillar["product"], column]), nan_ok=True
+                ), (entity_id, pillar["product"], key)
+
+
 def test_heatmap_covers_every_client_and_pillar(store) -> None:
     payload = service.heatmap_payload(store)
     assert len(payload["clients"]) == EXPECTED_CLIENTS

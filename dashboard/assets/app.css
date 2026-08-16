@@ -15,9 +15,9 @@
  *                       draws those three rules in sequence, so the grammar is
  *                       the first thing on screen and the last thing to leave.
  *
- * Colour is deep violet and brass. NO GRADIENTS ANYWHERE — every fill in this
- * file is a flat colour or a border. Violet (--accent, --seq-*) is the one
- * working hue: it carries interaction and it carries magnitude. Brass
+ * Colour is Standard Bank navy/blue and amber. NO GRADIENTS ANYWHERE — every
+ * fill in this file is a flat colour or a border. Blue (--accent, --seq-*) is
+ * the one working hue: it carries interaction and it carries magnitude. Amber
  * (--brass*) is decorative only — the wordmark tick, the section-head tick, the
  * active rail edge — and never encodes a value, so it can never be confused with the
  * reserved status four. The half rule is two solid blocks; the dotted rule is a
@@ -43,37 +43,43 @@
 :root {
   color-scheme: light;
 
-  /* Surfaces — cool paper with a violet cast, deliberately not warm cream. */
-  --plane: #f0eff7;
+  /* Surfaces — the page plane is Standard Bank navy, the same navy as
+   * --rail-bg below. The rail itself is darker still, so it reads as a
+   * distinct, deeper plane behind the page. Cards are the light surface
+   * floating on top of both, so --surface/-2/-sunk stay paper-light: see
+   * the token restore in .card. */
+  --plane: #0a1f44;
   --surface: #ffffff;
-  --surface-2: #f8f7fd;
-  --surface-sunk: #e9e7f2;
+  --surface-2: #f5f7fb;
+  --surface-sunk: #e8ecf3;
 
-  /* Ink — near-black carrying the same violet cast, never pure black. */
-  --ink: #151228;
-  --ink-2: #4a4566;
-  --muted: #797496;
-  --rule: #e6e4f0;
-  --rule-strong: #cbc7dd;
+  /* Ink — near-white, for text sitting directly on the blue page plane.
+   * Cards restore Standard Bank navy locally, since they stay light. */
+  --ink: #ffffff;
+  --ink-2: #c9d3e6;
+  --muted: #93a3c2;
+  --rule: rgba(255, 255, 255, 0.14);
+  --rule-strong: rgba(255, 255, 255, 0.28);
 
-  /* Accent — deep violet. One hue, used sparingly, and the only hue that
-   * works. Held dark on purpose: a bright violet reads as a consumer app, and
-   * this one is asking a banker to quote its figures to a client. */
-  --accent: #4b3fae;
-  --accent-strong: #3b3090;
-  --accent-ink: #372c86;
-  --accent-wash: #f1effc;
-  --accent-line: #d8d3f3;
+  /* Accent — Standard Bank Blue. One hue, used sparingly, and the only hue
+   * that works. Held dark on purpose: a bright blue reads as a consumer app,
+   * and this one is asking a banker to quote its figures to a client. */
+  --accent: #0033a0;
+  --accent-strong: #00267a;
+  --accent-ink: #002b8c;
+  --accent-wash: #e9effa;
+  --accent-line: #c7d6f0;
 
-  /* Brass — decoration only. It never encodes a value. Violet and brass is the
-   * pairing; brass is what keeps the violet from reading as a chart library. */
-  --brass: #b8913f;
-  --brass-ink: #8d6a1e;
-  --brass-wash: #faf4e7;
-  --brass-line: #e9d9b5;
+  /* Amber — decoration only. It never encodes a value. Navy/blue and amber is
+   * the pairing; amber is what keeps the blue from reading as a chart library. */
+  --brass: #e8a33d;
+  --brass-ink: #8a5d14;
+  --brass-wash: #fbf1e0;
+  --brass-line: #f0dba8;
 
-  /* The dark plane the rail sits on. */
-  --rail-bg: #141229;
+  /* The rail sits a step darker than the page plane, so it reads as its own
+   * plane rather than a slab cut from the same blue. */
+  --rail-bg: #050f24;
   --rail-line: rgba(255, 255, 255, 0.1);
 
   /* Reserved status palette. Never used for series identity. */
@@ -91,19 +97,15 @@
   --critical-wash: #fbeaea;
   --critical-line: #eec2c2;
 
-  /* Sequential violet ramp, for magnitude only. One hue, monotone lightness,
-   * ΔL* ≥ 0.10 between steps, and a pale end at 2.12:1 against the white card
-   * so a low score is still visible. Text on the fill flips to white at
-   * --seq-400 (5.91:1), not before — --seq-300 still reads darker in ink
-   * (5.36:1) than in white (3.41:1). Re-run before touching any step:
-   *   contrast = (max(L)+0.05)/(min(L)+0.05) on relative luminance.
-   * --seq-100 is a wash for tracks and bands, NOT a mark step. */
-  --seq-100: #efedfa;
-  --seq-200: #b3abe6;
-  --seq-300: #8b80d6;
-  --seq-400: #6255bd;
-  --seq-500: #453a94;
-  --seq-600: #2e2668;
+  /* Sequential blue ramp, for magnitude only. One hue, monotone lightness,
+   * darkest at the top step so the highest-magnitude cell still draws the
+   * eye. --seq-100 is a wash for tracks and bands, NOT a mark step. */
+  --seq-100: #e4ebf9;
+  --seq-200: #aec4ea;
+  --seq-300: #5c85d6;
+  --seq-400: #0033a0;
+  --seq-500: #062b6e;
+  --seq-600: #041a3f;
 
   --rail: 218px;
   --panel: 452px;
@@ -119,6 +121,40 @@
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --display: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Light surfaces on the blue plane. The page plane and everything sitting
+ * directly on it (headers, section heads, the topbar) now read light text on
+ * Standard Bank blue -- see --ink/--muted/--plane above. These containers are
+ * white islands floating on that plane instead, so they restore the original
+ * light-theme tokens locally: every card, chip, table, rangemark or form
+ * control nested inside stays dark-on-white without any further overrides. */
+.card,
+.topbar,
+.callout,
+.copilot,
+.palette-box,
+select,
+input[type="search"],
+input[type="text"],
+.btn,
+.seg {
+  /* A plain regular-property declaration, not just the custom property:
+   * ordinary CSS colour inheritance resolves "color" once at body and
+   * hands descendants that concrete value, so an element like a card's
+   * <h2> title -- which sets no colour of its own -- would otherwise keep
+   * inheriting the page plane's white text straight through the card. */
+  color: var(--ink);
+  --ink: #0a1f44;
+  --ink-2: #3d4a63;
+  --muted: #5a6472;
+  --rule: #e2e6ed;
+  --rule-strong: #c7cfda;
+  --accent: #0033a0;
+  --accent-strong: #00267a;
+  --accent-ink: #002b8c;
+  --accent-wash: #e9effa;
+  --accent-line: #c7d6f0;
 }
 
 * { box-sizing: border-box; }
@@ -188,8 +224,8 @@ table.data th,
 }
 
 h1, h2, h3, h4 { margin: 0; font-weight: 620; letter-spacing: -0.014em; }
-h1 { font-size: clamp(19px, 1.1vw + 15px, 23px); }
-h2 { font-size: 15.5px; }
+h1 { font-size: clamp(27px, 1.1vw + 15px, 23px); }
+h2 { font-size: 20px; }
 h3 { font-size: 13.5px; }
 
 .num {
@@ -492,9 +528,12 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
-  transition: border-color 160ms var(--ease);
+  transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
 }
-.card:hover { border-color: var(--rule-strong); }
+.card:hover {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 2px var(--brass), 0 0 34px 6px rgba(232, 163, 61, 0.4);
+}
 .card > :first-child { border-radius: var(--radius) var(--radius) 0 0; }
 .card > :last-child { border-radius: 0 0 var(--radius) var(--radius); }
 .card-head {
@@ -620,6 +659,82 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
 .rangemark .base.fixed { fill: var(--ink); }
 .rangemark .tick-label { fill: var(--muted); font-size: 9px; letter-spacing: -0.01em; }
 
+/* --------------------------------------------------------------- charts */
+/* Hand-rolled SVG from charts.js. Measured, not scaled: every chart reads its
+ * container width and redraws, so an 11px tick is 11px in every card instead of
+ * whatever a stretched viewBox makes of it. One fill, one hue — blue is
+ * magnitude, and anything that would need five series colours facets instead. */
+
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+
+.chart .bar { fill: var(--accent); }
+.chart .track { fill: var(--surface-sunk); }
+.chart .dot { fill: var(--accent); stroke: var(--surface); stroke-width: 1; }
+.chart .row-bg { fill: transparent; }
+.chart .grid-line { stroke: var(--rule); stroke-width: 1; }
+
+/* A reference line states a value, so it is drawn in ink. Amber is decorative
+ * in this system and must never encode a number. */
+.chart .ref-line { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.chart .ref-halo { stroke: var(--surface); stroke-width: 4; }
+.chart .ref-label {
+  fill: var(--ink-2); font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.02em;
+}
+.chart .tick {
+  fill: var(--muted); font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.02em;
+}
+.chart .cat { fill: var(--ink-2); font-size: 11px; }
+.chart .val {
+  fill: var(--ink); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.chart .cat-lead {
+  fill: var(--muted); font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.11em; text-transform: uppercase;
+}
+.chart .val-lead {
+  fill: var(--ink); font-size: 14px; font-weight: 620; font-variant-numeric: tabular-nums;
+}
+
+.chart .row-hit.click { cursor: pointer; }
+.chart .row-hit.click:hover .row-bg { fill: var(--accent-wash); }
+.chart .row-hit.click:hover .bar { fill: var(--accent-strong); }
+.chart .row-hit.click:hover .cat { fill: var(--ink); }
+.chart .dot:hover { fill: var(--accent-strong); r: 5; }
+
+.chart-note {
+  margin-top: 12px;
+  font-size: 11.8px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 74ch;
+}
+
+/* Small multiples. auto-fit rather than a fixed count, so the panels reflow
+ * instead of squeezing; minmax(0, …) because a bare track has a min-content
+ * floor and one wide panel would push the card past the viewport. */
+.facets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 16px 14px;
+}
+.facet { min-width: 0; }
+.facet-head {
+  display: flex; align-items: center; gap: 7px;
+  padding-bottom: 6px; margin-bottom: 2px; border-bottom: 1px solid var(--rule);
+}
+.facet-name {
+  font-size: 11.5px; font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.facet-count {
+  margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+
+/* The Chart/Table twin. */
+.seg-xs button { padding: 4px 10px; font-size: 11.5px; }
+.pane.hidden { display: none; }
+
 /* ---------------------------------------------------------------- stats */
 
 .stat-row { display: flex; flex-wrap: wrap; gap: 18px 32px; }
@@ -698,6 +813,11 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
  * away. */
 .table-wrap { overflow: visible; }
 .table-wrap.scrollable { overflow-x: auto; }
+/* A long finding list scrolls inside a fixed-height box rather than pushing
+ * the rest of the page down. The header pins to the top of this box, not the
+ * topbar, since the box -- not the page -- is what's scrolling now. */
+.table-wrap.v-scroll { max-height: 440px; overflow-y: auto; }
+.table-wrap.v-scroll table.data th { top: 0; }
 /* A table that fits never claims there is more to the right. */
 .table-wrap.scrollable::before,
 .heat-wrap.scrollable::before {
@@ -747,7 +867,7 @@ table.data tbody tr.click:hover td:first-child { box-shadow: inset 2px 0 0 0 var
   font-weight: 600; padding: 0 0 9px; text-align: center; min-width: 120px;
 }
 .heat th.row {
-  text-align: left; font-weight: 500; font-size: 12.5px; padding-right: 14px;
+  text-align: left; font-weight: 550; font-size: 13.5px; padding-right: 14px;
   white-space: nowrap; color: var(--ink);
   /* Names stay put while the pillars scroll under them — otherwise the right
    * half of the grid is a wall of unlabelled scores. */
@@ -759,6 +879,7 @@ table.data tbody tr.click:hover td:first-child { box-shadow: inset 2px 0 0 0 var
    * butt straight against the name with no edge to read them apart. */
   box-shadow: 1px 0 0 var(--rule);
 }
+.heat th.row .crumb { font-size: 15px; }
 .heat th.row .sec {
   display: block; font-size: 9px; color: var(--muted);
   letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
@@ -794,11 +915,11 @@ table.data tbody tr.click:hover td:first-child { box-shadow: inset 2px 0 0 0 var
 .cell.c-HIGH.s-5 { background: var(--seq-600); }
 
 .cell.c-MEDIUM { color: var(--accent-ink); border-color: var(--accent-line); }
-.cell.c-MEDIUM.s-1 { background: #fbfaff; }
-.cell.c-MEDIUM.s-2 { background: #f5f3fe; }
-.cell.c-MEDIUM.s-3 { background: #eeebfc; }
-.cell.c-MEDIUM.s-4 { background: #e6e2fa; }
-.cell.c-MEDIUM.s-5 { background: #dcd7f7; }
+.cell.c-MEDIUM.s-1 { background: #fafbfe; }
+.cell.c-MEDIUM.s-2 { background: #f2f5fc; }
+.cell.c-MEDIUM.s-3 { background: #e6edf9; }
+.cell.c-MEDIUM.s-4 { background: #d6e2f5; }
+.cell.c-MEDIUM.s-5 { background: #c2d4ef; }
 
 .cell.c-LOW {
   background: var(--surface);
@@ -1052,11 +1173,19 @@ select:focus-visible, input:focus-visible { outline-offset: -1px; border-color: 
 .spinner { padding: 44px; text-align: center; color: var(--muted); font-size: 12.5px; }
 
 .crumb { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+/* `--ink` rather than `--accent-ink`: the client-page crumb sits directly on
+ * the navy page plane, not inside a `.card`, so it never gets the light-mode
+ * token restore. `--accent-ink` is a dark navy meant for accent text on a
+ * white surface -- on the page plane it was dark-on-dark and unreadable. The
+ * heatmap's client-name crumb, which *is* inside a white table, stays legible
+ * either way since `--ink` resolves light there too. */
 .crumb button {
   background: none; border: 0; padding: 0; cursor: pointer;
-  color: var(--accent-ink); font-family: var(--font); font-size: 12px;
+  color: var(--ink); font-family: var(--font); font-size: 12px;
+  text-decoration: underline; text-decoration-color: var(--rule-strong);
+  text-underline-offset: 2px;
 }
-.crumb button:hover { text-decoration: underline; }
+.crumb button:hover { text-decoration-color: currentColor; }
 
 .gauge-row { display: flex; gap: 14px; flex-wrap: wrap; }
 .gauge {
