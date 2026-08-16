@@ -43,18 +43,23 @@
 :root {
   color-scheme: light;
 
-  /* Surfaces — cool neutral paper, deliberately not warm cream. */
-  --plane: #f7f8fa;
+  /* Surfaces — the page plane is Standard Bank navy, the same navy as
+   * --rail-bg below. The rail itself is darker still, so it reads as a
+   * distinct, deeper plane behind the page. Cards are the light surface
+   * floating on top of both, so --surface/-2/-sunk stay paper-light: see
+   * the token restore in .card. */
+  --plane: #0a1f44;
   --surface: #ffffff;
   --surface-2: #f5f7fb;
   --surface-sunk: #e8ecf3;
 
-  /* Ink — Standard Bank navy, never pure black. */
-  --ink: #0a1f44;
-  --ink-2: #3d4a63;
-  --muted: #5a6472;
-  --rule: #e2e6ed;
-  --rule-strong: #c7cfda;
+  /* Ink — near-white, for text sitting directly on the blue page plane.
+   * Cards restore Standard Bank navy locally, since they stay light. */
+  --ink: #ffffff;
+  --ink-2: #c9d3e6;
+  --muted: #93a3c2;
+  --rule: rgba(255, 255, 255, 0.14);
+  --rule-strong: rgba(255, 255, 255, 0.28);
 
   /* Accent — Standard Bank Blue. One hue, used sparingly, and the only hue
    * that works. Held dark on purpose: a bright blue reads as a consumer app,
@@ -72,8 +77,9 @@
   --brass-wash: #fbf1e0;
   --brass-line: #f0dba8;
 
-  /* The dark plane the rail sits on. */
-  --rail-bg: #0a1f44;
+  /* The rail sits a step darker than the page plane, so it reads as its own
+   * plane rather than a slab cut from the same blue. */
+  --rail-bg: #050f24;
   --rail-line: rgba(255, 255, 255, 0.1);
 
   /* Reserved status palette. Never used for series identity. */
@@ -117,6 +123,40 @@
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --display: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Light surfaces on the blue plane. The page plane and everything sitting
+ * directly on it (headers, section heads, the topbar) now read light text on
+ * Standard Bank blue -- see --ink/--muted/--plane above. These containers are
+ * white islands floating on that plane instead, so they restore the original
+ * light-theme tokens locally: every card, chip, table, rangemark or form
+ * control nested inside stays dark-on-white without any further overrides. */
+.card,
+.topbar,
+.callout,
+.copilot,
+.palette-box,
+select,
+input[type="search"],
+input[type="text"],
+.btn,
+.seg {
+  /* A plain regular-property declaration, not just the custom property:
+   * ordinary CSS colour inheritance resolves "color" once at body and
+   * hands descendants that concrete value, so an element like a card's
+   * <h2> title -- which sets no colour of its own -- would otherwise keep
+   * inheriting the page plane's white text straight through the card. */
+  color: var(--ink);
+  --ink: #0a1f44;
+  --ink-2: #3d4a63;
+  --muted: #5a6472;
+  --rule: #e2e6ed;
+  --rule-strong: #c7cfda;
+  --accent: #0033a0;
+  --accent-strong: #00267a;
+  --accent-ink: #002b8c;
+  --accent-wash: #e9effa;
+  --accent-line: #c7d6f0;
 }
 
 * { box-sizing: border-box; }
@@ -186,8 +226,8 @@ table.data th,
 }
 
 h1, h2, h3, h4 { margin: 0; font-weight: 620; letter-spacing: -0.014em; }
-h1 { font-size: clamp(19px, 1.1vw + 15px, 23px); }
-h2 { font-size: 15.5px; }
+h1 { font-size: clamp(27px, 1.1vw + 15px, 23px); }
+h2 { font-size: 20px; }
 h3 { font-size: 13.5px; }
 
 .num {
@@ -487,40 +527,15 @@ a { color: var(--accent-ink); text-underline-offset: 2px; }
  * header. The two children that touch the top edge round their own corners
  * instead. */
 .card {
-  background: var(--rail-bg);
+  background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
-  color: #fff;
   transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
-
-  /* Every descendant reads its colour through var(--ink), var(--muted),
-   * var(--surface-2) etc. — redeclaring those tokens here turns the whole
-   * card (and everything nested inside it: chips, tables, range marks,
-   * links) navy-with-white-text without touching a single nested rule. */
-  --ink: #ffffff;
-  --ink-2: #dbe2f0;
-  --muted: #9fb0c9;
-  --rule: rgba(255, 255, 255, 0.14);
-  --rule-strong: rgba(255, 255, 255, 0.28);
-  --surface: transparent;
-  --surface-2: rgba(255, 255, 255, 0.05);
-  --surface-sunk: rgba(255, 255, 255, 0.09);
-  --accent: #6a93de;
-  --accent-strong: #8fb0e8;
-  --accent-ink: #bcd2f7;
-  --accent-wash: rgba(106, 147, 222, 0.18);
-  --accent-line: rgba(106, 147, 222, 0.4);
 }
 .card:hover {
   border-color: var(--brass);
-  box-shadow: 0 0 0 2px var(--brass), 0 0 34px 6px rgba(232, 163, 61, 0.6);
+  box-shadow: 0 0 0 2px var(--brass), 0 0 34px 6px rgba(232, 163, 61, 0.4);
 }
-/* The reserved status four keep their hue but read too dark on navy when
- * used as bare text with no wash behind them (chips carry their own wash
- * and are unaffected). Brightened for legibility inside a dark card only. */
-.card .status-PRIORITY, .card .sens-STABLE { color: #4ee06a; }
-.card .status-INVESTIGATE, .card .sens-MODERATE { color: #ffc36b; }
-.card .sens-SENSITIVE { color: #ff8f8f; }
 .card > :first-child { border-radius: var(--radius) var(--radius) 0 0; }
 .card > :last-child { border-radius: 0 0 var(--radius) var(--radius); }
 .card-head {
