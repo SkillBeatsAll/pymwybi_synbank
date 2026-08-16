@@ -5,6 +5,9 @@ data/processed/
 .venv/
 .pytest_cache/
 
+# --- Claude Code onboarding doc — never pushed to the shared repo ---
+CLAUDE.md
+
 # --- Python ---
 __pycache__/
 *.py[cod]
